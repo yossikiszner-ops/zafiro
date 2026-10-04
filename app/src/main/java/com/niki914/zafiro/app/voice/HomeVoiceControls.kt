@@ -90,7 +90,10 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
     var showGlass by remember { mutableStateOf(false) }
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilledTonalButton(onClick = {
-            if (status.active) { ownsResponse = false; session.stop() }
+            if (status.active) {
+                if (ownsResponse && agent.status.value.isRunning) agent.stop()
+                ownsResponse = false; session.stop()
+            }
             else scope.launch {
                 permissions.request(com.niki914.zafiro.business.permission.Permission.MICROPHONE)
                 if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) session.start()
