@@ -5,6 +5,8 @@ import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
@@ -107,6 +109,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
         }
         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, stringResource(R.string.voice_settings)) }
     }
+    val route by com.niki914.zafiro.chat.routing.RequestRouting.latest.collectAsState()
     if (showSettings) {
         var voice by remember { mutableStateOf(session.voice) }
         var style by remember { mutableStateOf(session.style) }
@@ -116,9 +119,28 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
         var models by remember { mutableStateOf<List<String>>(emptyList()) }
         var menu by remember { mutableStateOf(false) }
         var discovered by remember { mutableStateOf(false) }
+        var budget by remember { mutableStateOf(com.niki914.zafiro.chat.routing.RequestRouting.budget.value) }
+        var budgetMenu by remember { mutableStateOf(false) }
         AlertDialog(onDismissRequest = { showSettings = false }, title = { Text(stringResource(R.string.voice_settings)) }, text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.voice_privacy))
+                Box {
+                    TextButton(onClick = { budgetMenu = true }) { Text(stringResource(R.string.request_budget) + ": " + stringResource(when (budget) {
+                        com.niki914.zafiro.chat.routing.RequestBudget.Economy -> R.string.request_economy
+                        com.niki914.zafiro.chat.routing.RequestBudget.Balanced -> R.string.request_balanced
+                        com.niki914.zafiro.chat.routing.RequestBudget.Quality -> R.string.request_quality
+                    })) }
+                    DropdownMenu(budgetMenu, onDismissRequest = { budgetMenu = false }) {
+                        com.niki914.zafiro.chat.routing.RequestBudget.entries.forEach { policy ->
+                            DropdownMenuItem(text = { Text(stringResource(when (policy) {
+                                com.niki914.zafiro.chat.routing.RequestBudget.Economy -> R.string.request_economy
+                                com.niki914.zafiro.chat.routing.RequestBudget.Balanced -> R.string.request_balanced
+                                com.niki914.zafiro.chat.routing.RequestBudget.Quality -> R.string.request_quality
+                            })) }, onClick = { budget = policy; budgetMenu = false })
+                        }
+                    }
+                }
+                if (route.model.isNotBlank()) Text(stringResource(R.string.request_observation, route.model, route.inputTokens, route.outputTokens, route.tools, route.totalTools, route.latencyMs))
                 OutlinedTextField(voice, { voice = it }, label = { Text(stringResource(R.string.voice_name)) }, singleLine = true)
                 OutlinedTextField(style, { style = it }, label = { Text(stringResource(R.string.voice_style)) })
                 OutlinedTextField(model, { model = it }, label = { Text(stringResource(R.string.voice_model)) }, singleLine = true)
@@ -140,6 +162,8 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
             }
         }, confirmButton = {
             TextButton(onClick = {
+                com.niki914.zafiro.chat.routing.RequestRouting.budget.value = budget
+                prefs.edit().putString("request_budget", budget.name).apply()
                 session.voice = voice.trim().ifBlank { "Charon" }; session.style = style.trim().take(300)
                 session.model = model.trim().removePrefix("models/"); session.speed = speed; session.autoSpeak = auto
                 prefs.edit().putString("voice", session.voice).putString("style", session.style).putString("model", session.model)

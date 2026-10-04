@@ -271,6 +271,7 @@ object LLMController {
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
         val previousSession = runtimeState?.okia
         val activeSession = obtainSession(protocol, configWithoutRuntimePrompt)
+        com.niki914.zafiro.chat.routing.RoutingRuntime.updateProxy(configWithoutRuntimePrompt.proxy)
         activeSession.update {
             endpoint = configWithoutRuntimePrompt.endpoint
             apiKey = configWithoutRuntimePrompt.apiKey
@@ -680,6 +681,8 @@ object LLMController {
             model = config.model
             hooks += killToolResourcesHook
             hooks += fixIncompleteToolCallsHook
+            hooks += com.niki914.zafiro.chat.routing.RoutingRuntime
+            httpEngine = com.niki914.zafiro.chat.routing.RoutingRuntime
             // null = 不超时（General Settings 提供「不限时」选项）
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)

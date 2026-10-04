@@ -18,4 +18,9 @@
     <string name="voice_speed">מהירות השמעה: %.2fx</string>
     <string name="voice_auto">הקראת תשובות</string>
     <string name="voice_save">שמירה</string>
+    <string name="request_budget">מדיניות בקשות</string>
+    <string name="request_economy">חסכוני</string>
+    <string name="request_balanced">מאוזן</string>
+    <string name="request_quality">איכות</string>
+    <string name="request_observation">מודל: %1$s · tokens משוערים: %2$d קלט / %3$d פלט · כלים: %4$d/%5$d · %6$d מילישניות</string>
 </resources>

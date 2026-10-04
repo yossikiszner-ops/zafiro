@@ -28,7 +28,10 @@ internal class VoiceSession(
     private var capture: Job? = null
     @Volatile private var epoch = 0
     private var processing: Job? = null
-    private var playback: Job? = null
+    private val speechCancellation = SpeechCancellation()
+    private var playback: Job?
+        get() = speechCancellation.job
+        set(value) { speechCancellation.job = value }
     @Volatile private var track: AudioTrack? = null
     var voice = "Charon"
     var style = "Calm, precise, serious. Natural pace."
@@ -155,7 +158,7 @@ internal class VoiceSession(
         }
     }
     fun interruptSpeech() {
-        playback?.cancel(); playback = null; stopTrack()
+        speechCancellation.interrupt(::stopTrack)
         if (mutable.value.phase == ZafiroGlassPhase.Speaking) publish(ZafiroGlassPhase.Interrupted)
     }
     private fun stopTrack() { track?.let { runCatching { it.pause(); it.flush() } } }

@@ -72,3 +72,12 @@ internal object VoiceAudio {
         return result
     }
 }
+
+/** Cancellation owns generation and all prefetched chunks; stop is synchronous at speech onset. */
+internal class SpeechCancellation {
+    @Volatile var job: kotlinx.coroutines.Job? = null
+    fun interrupt(stopAudio: () -> Unit) {
+        job?.cancel(); job = null
+        stopAudio()
+    }
+}

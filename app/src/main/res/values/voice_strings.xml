@@ -18,4 +18,9 @@
     <string name="voice_speed">Playback speed: %.2fx</string>
     <string name="voice_auto">Speak replies</string>
     <string name="voice_save">Save</string>
+    <string name="request_budget">Request policy</string>
+    <string name="request_economy">Economy</string>
+    <string name="request_balanced">Balanced</string>
+    <string name="request_quality">Quality</string>
+    <string name="request_observation">Model: %1$s · Approx. tokens: %2$d in / %3$d out · Tools: %4$d/%5$d · %6$d ms</string>
 </resources>

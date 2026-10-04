@@ -4,6 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class VoiceAudioTest {
+    @Test fun bargeInCancelsGenerationAndPrefetchAndStopsAudioSynchronously() {
+        val parent = kotlinx.coroutines.Job()
+        val prefetch = kotlinx.coroutines.Job(parent)
+        val interruption = SpeechCancellation().apply { job = parent }
+        var stopped = false
+        interruption.interrupt { stopped = true }
+        assertTrue(stopped)
+        assertTrue(parent.isCancelled)
+        assertTrue(prefetch.isCancelled)
+        assertNull(interruption.job)
+    }
     @Test fun silenceDoesNotProduceUtterance() {
         val vad = LocalVoiceDetector()
         repeat(2000) { assertEquals(LocalVoiceDetector.Event.None, vad.accept(ShortArray(320), 320)) }
