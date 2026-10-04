@@ -38,6 +38,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
     val input by rememberUpdatedState(onInputChange); val send by rememberUpdatedState(onSend)
     val agent = remember { requireService<Agent>() }
     var ownsResponse by remember { mutableStateOf(false) }
+    var sendFailed by remember { mutableStateOf(false) }
     val session = remember {
         VoiceSession(context.applicationContext, scope, provider, provider) { transcript ->
             scope.launch {
@@ -46,7 +47,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                     ownsResponse = true
                     input(transcript); send()
                 } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                catch (_: Exception) { ownsResponse = false; session.agentFailed() }
+                catch (_: Exception) { ownsResponse = false; sendFailed = true }
             }
         }.apply {
             voice = prefs.getString("voice", "Charon") ?: "Charon"
@@ -55,6 +56,9 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
             speed = prefs.getFloat("speed", 1f)
             autoSpeak = prefs.getBoolean("auto_speak", true)
         }
+    }
+    LaunchedEffect(sendFailed) {
+        if (sendFailed) { session.agentFailed(); sendFailed = false }
     }
     val status by session.status.collectAsState()
     val owner = LocalLifecycleOwner.current
