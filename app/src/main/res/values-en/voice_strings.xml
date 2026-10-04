@@ -23,4 +23,17 @@
     <string name="request_balanced">Balanced</string>
     <string name="request_quality">Quality</string>
     <string name="request_observation">Model: %1$s · Approx. tokens: %2$d in / %3$d out · Tools: %4$d/%5$d · %6$d ms</string>
+    <string name="glass_studio">Glass Appearance Studio</string>
+    <string name="glass_presets">Appearance preset</string>
+    <string name="glass_darkness">Darkness</string>
+    <string name="glass_transparency">Transparency</string>
+    <string name="glass_thickness">Optical thickness</string>
+    <string name="glass_reflection">Surface reflection</string>
+    <string name="glass_edge">Edge brightness</string>
+    <string name="glass_curvature">Curvature</string>
+    <string name="glass_presence">Presence style</string>
+    <string name="glass_intensity">Presence intensity</string>
+    <string name="glass_reduced_motion">Reduced motion</string>
+    <string name="network_lock">Restrict managed connections</string>
+    <string name="network_scope">AI and MCP connections are limited to configured destinations. Local scripts require approval and can use their own network connections. This is not a device firewall.</string>
 </resources>

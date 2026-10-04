@@ -29,6 +29,11 @@ class VoiceAudioTest {
         assertEquals(LocalVoiceDetector.Event.End, vad.accept(ShortArray(320), 320))
         assertFalse(vad.speaking)
     }
+    @Test fun classifiedNoiseIsRejectedEvenWhenLoud() {
+        val vad = LocalVoiceDetector()
+        repeat(100) { assertEquals(LocalVoiceDetector.Event.None, vad.accept(ShortArray(320) { 15000 }, 320, false)) }
+        assertFalse(vad.speaking)
+    }
     @Test fun isolatedNoiseDoesNotOpenUtterance() {
         val vad = LocalVoiceDetector()
         repeat(30) { vad.accept(ShortArray(320) { 3000 }, 320); vad.accept(ShortArray(320), 320) }

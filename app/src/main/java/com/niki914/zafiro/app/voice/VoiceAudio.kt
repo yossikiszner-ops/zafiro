@@ -11,10 +11,10 @@ internal class LocalVoiceDetector(private val threshold: Float = .018f) {
     private var quiet = 0
     var speaking = false
         private set
-    fun accept(samples: ShortArray, count: Int): Event {
+    fun accept(samples: ShortArray, count: Int, classifiedSpeech: Boolean? = null): Event {
         if (count <= 0) return Event.None
         val rms = sqrt((0 until count).sumOf { val v = samples[it] / 32768.0; v * v } / count).toFloat()
-        if (rms > threshold) { voiced++; quiet = 0 } else { quiet++; if (!speaking) voiced = 0 }
+        if (classifiedSpeech ?: (rms > threshold)) { voiced++; quiet = 0 } else { quiet++; if (!speaking) voiced = 0 }
         if (!speaking && voiced >= 3) { speaking = true; return Event.Start }
         if (speaking && quiet >= 25) { reset(); return Event.End }
         return Event.None

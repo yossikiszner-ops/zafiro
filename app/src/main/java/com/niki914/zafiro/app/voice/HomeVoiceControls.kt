@@ -1,9 +1,6 @@
 package com.niki914.zafiro.app.voice
 
-import android.Manifest
 import android.content.Context
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -49,7 +46,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                     ownsResponse = true
                     input(transcript); send()
                 } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                catch (_: Exception) { ownsResponse = false }
+                catch (_: Exception) { ownsResponse = false; session.agentFailed() }
             }
         }.apply {
             voice = prefs.getString("voice", "Charon") ?: "Charon"
@@ -84,12 +81,16 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
             }
         }
     }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> session.start() }
+    val permissions = remember { requireService<com.niki914.zafiro.business.permission.PermissionManager>() }
     var showSettings by remember { mutableStateOf(false) }
+    var showGlass by remember { mutableStateOf(false) }
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilledTonalButton(onClick = {
             if (status.active) { ownsResponse = false; session.stop() }
-            else permission.launch(Manifest.permission.RECORD_AUDIO)
+            else scope.launch {
+                permissions.request(com.niki914.zafiro.business.permission.Permission.MICROPHONE)
+                session.start()
+            }
         }) {
             Icon(if (status.active) Icons.Default.Stop else Icons.Default.Mic, contentDescription = null)
             Spacer(Modifier.width(6.dp))
@@ -109,6 +110,8 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
         }
         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, stringResource(R.string.voice_settings)) }
     }
+    if (showGlass) GlassAppearanceSettings { showGlass = false }
+    val destinations by com.niki914.zafiro.chat.routing.NetworkPolicy.destinations.collectAsState()
     val route by com.niki914.zafiro.chat.routing.RequestRouting.latest.collectAsState()
     if (showSettings) {
         var voice by remember { mutableStateOf(session.voice) }
@@ -121,9 +124,14 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
         var discovered by remember { mutableStateOf(false) }
         var budget by remember { mutableStateOf(com.niki914.zafiro.chat.routing.RequestRouting.budget.value) }
         var budgetMenu by remember { mutableStateOf(false) }
+        var networkLock by remember { mutableStateOf(com.niki914.zafiro.chat.routing.NetworkPolicy.enabled.value) }
         AlertDialog(onDismissRequest = { showSettings = false }, title = { Text(stringResource(R.string.voice_settings)) }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { showSettings = false; showGlass = true }) { Text(stringResource(R.string.glass_studio)) }
                 Text(stringResource(R.string.voice_privacy))
+                Row { Text(stringResource(R.string.network_lock)); Switch(networkLock, { networkLock = it }) }
+                Text(stringResource(R.string.network_scope))
+                destinations.forEach { destination -> Text(destination) }
                 Box {
                     TextButton(onClick = { budgetMenu = true }) { Text(stringResource(R.string.request_budget) + ": " + stringResource(when (budget) {
                         com.niki914.zafiro.chat.routing.RequestBudget.Economy -> R.string.request_economy
@@ -162,6 +170,8 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
             }
         }, confirmButton = {
             TextButton(onClick = {
+                com.niki914.zafiro.chat.routing.NetworkPolicy.enabled.value = networkLock
+                prefs.edit().putBoolean("network_lock", networkLock).apply()
                 com.niki914.zafiro.chat.routing.RequestRouting.budget.value = budget
                 prefs.edit().putString("request_budget", budget.name).apply()
                 session.voice = voice.trim().ifBlank { "Charon" }; session.style = style.trim().take(300)

@@ -82,12 +82,14 @@ fun ZafiroGlass(
     compactWidth: Dp = 156.dp,
     compactHeight: Dp = 48.dp,
     onClick: () -> Unit = {},
+    reducedMotion: Boolean = false,
     expanded: Boolean = false,
     onExpandedChange: (Boolean) -> Unit = {},
 ) {
     val expansion = remember { Animatable(if (expanded) 1f else 0f) }
     var drag by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(expanded) {
+    LaunchedEffect(expanded, reducedMotion) {
+        if (reducedMotion) { expansion.snapTo(if (expanded) 1f else 0f); return@LaunchedEffect }
         expansion.animateTo(
             if (expanded) 1f else 0f,
             spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = .82f)
@@ -109,23 +111,7 @@ fun ZafiroGlass(
             .width(width).height(height)
             .graphicsLayer { alpha = 1f - appearance.transparency * .18f }
             .clip(RoundedCornerShape(radius))
-            .drawBehind {
-                drawRoundRect(
-                    brush = Brush.linearGradient(
-                        listOf(
-                            Color.White.copy(alpha = .05f + appearance.reflection * .12f),
-                            base,
-                            Color(0xFF16212B).copy(alpha = .35f + appearance.opticalThickness * .25f)
-                        )
-                    ),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius.toPx())
-                )
-                drawRoundRect(
-                    brush = Brush.linearGradient(listOf(Color.White.copy(alpha=appearance.edgeBrightness*.34f), Color.Transparent, accent.copy(alpha=.12f))),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius.toPx()),
-                    style = Stroke(width = 1.dp.toPx())
-                )
-            }
+            .zafiroGlassMaterial(appearance, radius, accent)
             .clickable(onClick = onClick)
             .pointerInput(expanded) {
                 detectVerticalDragGestures(
@@ -172,4 +158,20 @@ private fun ZafiroPresence(style: ZafiroPresenceStyle, phase: ZafiroGlassPhase, 
             ZafiroPresenceStyle.Invisible -> Unit
         }
     }
+}
+
+/** Shared material for compact and expanded overlay geometry. */
+fun Modifier.zafiroGlassMaterial(appearance: ZafiroGlassAppearance, radius: androidx.compose.ui.unit.Dp, accent: Color = Color(0xFFB5E7FF)): Modifier = drawBehind {
+    val corner = androidx.compose.ui.geometry.CornerRadius(radius.toPx())
+    drawRoundRect(
+        brush = Brush.linearGradient(listOf(
+            Color.White.copy(alpha = .05f + appearance.reflection.coerceIn(0f, 1f) * .12f),
+            Color.Black.copy(alpha = appearance.darkness.coerceIn(0f, 1f)),
+            Color(0xFF16212B).copy(alpha = .35f + appearance.opticalThickness.coerceIn(0f, 1f) * .25f)
+        )), cornerRadius = corner
+    )
+    drawRoundRect(
+        brush = Brush.linearGradient(listOf(Color.White.copy(alpha = appearance.edgeBrightness.coerceIn(0f, 1f) * .34f), Color.Transparent, accent.copy(alpha = .12f))),
+        cornerRadius = corner, style = Stroke(width = 1.dp.toPx())
+    )
 }

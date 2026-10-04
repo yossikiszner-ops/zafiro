@@ -39,6 +39,8 @@ class App : Application() {
         //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
         if (!isMainProcess()) return
         ContextProvider.provide(applicationContext)
+        com.niki914.zafiro.app.voice.GlassPreferences.load(applicationContext)
+        com.niki914.zafiro.chat.routing.NetworkPolicy.enabled.value = getSharedPreferences("zafiro_voice", MODE_PRIVATE).getBoolean("network_lock", true)
         com.niki914.zafiro.chat.routing.RequestRouting.budget.value = runCatching {
             com.niki914.zafiro.chat.routing.RequestBudget.valueOf(getSharedPreferences("zafiro_voice", MODE_PRIVATE).getString("request_budget", "Balanced") ?: "Balanced")
         }.getOrDefault(com.niki914.zafiro.chat.routing.RequestBudget.Balanced)

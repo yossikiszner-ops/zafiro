@@ -1,12 +1,13 @@
 package com.niki914.zafiro.app.voice
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.media.*
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.NoiseSuppressor
-import androidx.core.content.ContextCompat
+import com.niki914.zafiro.business.permission.Permission
+import com.niki914.zafiro.business.permission.PermissionManager
+import com.niki914.zafiro.business.permission.PermissionState
+import com.niki914.zafiro.service.requireService
 import com.niki914.zafiro.remoteview.glass.ZafiroGlassPhase
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,9 +41,10 @@ internal class VoiceSession(
     var autoSpeak = true
     @Volatile private var accepting = true
 
+    @android.annotation.SuppressLint("MissingPermission") // Central PermissionManager checks before capture.
     fun start() {
         if (capture?.isActive == true) return
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        if (requireService<PermissionManager>().status(Permission.MICROPHONE) != PermissionState.GRANTED) {
             fail(VoiceProblem.Microphone); return
         }
         val generation = ++epoch
@@ -50,6 +52,7 @@ internal class VoiceSession(
         mutable.value = VoiceStatus(active = true, phase = ZafiroGlassPhase.Listening)
         capture = scope.launch(Dispatchers.IO) {
             var ownedRecorder: AudioRecord? = null
+            var speechClassifier: com.konovalov.vad.webrtc.VadWebRTC? = null
             var aec: AcousticEchoCanceler? = null; var noise: NoiseSuppressor? = null
             try {
                 val minimum = AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -60,6 +63,13 @@ internal class VoiceSession(
                 if (recorder.state != AudioRecord.STATE_INITIALIZED) throw VoiceFailure(VoiceProblem.Microphone)
                 if (AcousticEchoCanceler.isAvailable()) aec = AcousticEchoCanceler.create(recorder.audioSessionId)?.apply { enabled = true }
                 if (NoiseSuppressor.isAvailable()) noise = NoiseSuppressor.create(recorder.audioSessionId)?.apply { enabled = true }
+                speechClassifier = try {
+                    com.konovalov.vad.webrtc.VadWebRTC(
+                        sampleRate = com.konovalov.vad.webrtc.config.SampleRate.SAMPLE_RATE_16K,
+                        frameSize = com.konovalov.vad.webrtc.config.FrameSize.FRAME_SIZE_320,
+                        mode = com.konovalov.vad.webrtc.config.Mode.VERY_AGGRESSIVE,
+                    )
+                } catch (_: LinkageError) { null } // Unsupported native ABI: local energy fallback.
                 recorder.startRecording()
                 val vad = LocalVoiceDetector(); val frame = ShortArray(320); val preRoll = ArrayDeque<ByteArray>()
                 var utterance: ByteArrayOutputStream? = null; var silentFrames = 0
@@ -69,7 +79,7 @@ internal class VoiceSession(
                     if (!accepting && playback?.isActive != true) { vad.reset(); preRoll.clear(); utterance = null; continue }
                     val bytes = VoiceAudio.pcm(frame, count)
                     preRoll.addLast(bytes); while (preRoll.size > 10) preRoll.removeFirst()
-                    when (vad.accept(frame, count)) {
+                    when (vad.accept(frame, count, speechClassifier?.isSpeech(if (count == frame.size) frame else frame.copyOf(frame.size)))) {
                         LocalVoiceDetector.Event.Start -> {
                             silentFrames = 0
                             interruptSpeech()
@@ -94,7 +104,7 @@ internal class VoiceSession(
             } catch (cancel: CancellationException) { throw cancel }
             catch (e: Exception) { fail((e as? VoiceFailure)?.problem ?: VoiceProblem.Microphone) }
             finally {
-                aec?.release(); noise?.release()
+                speechClassifier?.close(); aec?.release(); noise?.release()
                 ownedRecorder?.let { runCatching { it.stop() }; it.release(); if (microphone === it) microphone = null }
                 withContext(NonCancellable + Dispatchers.Main) {
                     if (epoch == generation && mutable.value.problem == null) { mutable.value = VoiceStatus(); VoiceActivity.phase.value = null }

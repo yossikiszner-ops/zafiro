@@ -305,7 +305,8 @@ object FloatingBallOverlayManager {
                         val uiState by vmInstance.uiStateFlow.collectAsState()
                         ZafiroGlass(
                             phase = com.niki914.zafiro.app.voice.VoiceActivity.phase.collectAsState().value ?: uiState.glassPhase,
-                            appearance = ZafiroGlassPresets.Signature,
+                            appearance = com.niki914.zafiro.app.voice.GlassPreferences.appearance.collectAsState().value,
+                            reducedMotion = com.niki914.zafiro.app.voice.GlassPreferences.reducedMotion.collectAsState().value,
                             compactWidth = FloatingBallTokens.collapsedWidthDp,
                             compactHeight = FloatingBallTokens.collapsedHeightDp,
                             onClick = { ballLayout.requestExpand() },
@@ -376,6 +377,8 @@ object FloatingBallOverlayManager {
                     ) {
                         FloatingBallMorphCard(
                             state = uiState.ballState,
+                            appearance = com.niki914.zafiro.app.voice.GlassPreferences.appearance.collectAsState().value,
+                            reducedMotion = com.niki914.zafiro.app.voice.GlassPreferences.reducedMotion.collectAsState().value,
                             dockSide = uiState.dockSide,
                             preview = uiState.preview,
                             approvalRequest = uiState.approvalRequest,

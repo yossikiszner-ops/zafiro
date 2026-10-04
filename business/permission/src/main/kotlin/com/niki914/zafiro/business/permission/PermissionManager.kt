@@ -95,6 +95,7 @@ class PermissionManagerImpl : PermissionManager {
                 // SYSTEM_DIALOG 只在 <30 真能用（运行时权限框）；30+ 是 special 机制，
                 // 它自己报 UNAVAILABLE，链自然降级到跳设置页
                 listOf(Channel.ROOT_SHELL, Channel.SHIZUKU, Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS)
+            Permission.MICROPHONE -> listOf(Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS)
             Permission.ROOT -> listOf(Channel.ROOT_SHELL)
             Permission.SHIZUKU -> listOf(Channel.SHIZUKU)
         }

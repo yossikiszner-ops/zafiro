@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Shared by the existing runtime's serialization hook and cancellable transport. */
 internal object RoutingRuntime : Hooks, HttpEngine {
-    private val engine = OkHttpEngine()
+    private val engine = OkHttpEngine(base = okhttp3.OkHttpClient.Builder().followRedirects(false).followSslRedirects(false).build())
     private var cached = emptyList<String>()
     private var credential = ""
     private var discoveryAt = 0L
@@ -47,6 +47,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
         RequestRouting.latest.value = RouteObservation(chosen, reason, tools = tools.size, totalTools = snapshot.tools.size, retainedMessages = compact.size, totalMessages = history.size)
     }
     override suspend fun stream(request: HttpRequest): StreamResponse {
+        check(NetworkPolicy.permits(request.url)) { "Network destination is not configured or enabled" }
         val start = System.currentTimeMillis()
         val model = runCatching { json.parseToJsonElement(request.body.orEmpty()).jsonObject["model"]?.jsonPrimitive?.content }.getOrNull().orEmpty()
         RequestRouting.latest.value = RequestRouting.latest.value.copy(inputTokens = RequestPlanner.estimateTokens(request.body.orEmpty()))
@@ -58,15 +59,31 @@ internal object RoutingRuntime : Hooks, HttpEngine {
         }
         if (response !is StreamResponse.Ok) return response
         var output = 0
+        var measuredInput: Int? = null
+        var measuredOutput: Int? = null
         return response.copy(lines = response.lines.onEach { line ->
             line.data?.let { data ->
                 runCatching {
                     val root = json.parseToJsonElement(data).jsonObject
                     root["choices"]?.jsonArray?.forEach { c -> output += c.jsonObject["delta"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull?.length ?: 0 }
+                    when (val delta = root["delta"]) {
+                        is JsonObject -> output += delta["text"]?.jsonPrimitive?.contentOrNull?.length ?: 0
+                        is JsonPrimitive -> if (root["type"]?.jsonPrimitive?.contentOrNull == "response.output_text.delta") output += delta.contentOrNull?.length ?: 0
+                        else -> Unit
+                    }
+                    val usage = root["usage"]?.jsonObject ?: root["message"]?.jsonObject?.get("usage")?.jsonObject ?: root["response"]?.jsonObject?.get("usage")?.jsonObject
+                    usage?.let { u ->
+                        measuredInput = (u["input_tokens"] ?: u["prompt_tokens"])?.jsonPrimitive?.intOrNull ?: measuredInput
+                        measuredOutput = (u["output_tokens"] ?: u["completion_tokens"])?.jsonPrimitive?.intOrNull ?: measuredOutput
+                    }
                 }
             }
-        }.onCompletion { RequestRouting.latest.value = RequestRouting.latest.value.copy(outputTokens = (output + 2) / 3, latencyMs = System.currentTimeMillis() - start) })
+        }.onCompletion { RequestRouting.latest.value = RequestRouting.latest.value.copy(inputTokens = measuredInput ?: RequestRouting.latest.value.inputTokens, outputTokens = measuredOutput ?: (output + 2) / 3, latencyMs = System.currentTimeMillis() - start) })
     }
-    override suspend fun unary(request: HttpRequest): HttpResponse = engine.unary(request)
+    override suspend fun beforeToolCall(call: com.niki914.okia.hooks.ToolCallHolder) = NetworkPolicy.approveScript(call)
+    override suspend fun unary(request: HttpRequest): HttpResponse {
+        check(NetworkPolicy.permits(request.url)) { "Network destination is not configured or enabled" }
+        return engine.unary(request)
+    }
     override fun close() = Unit
 }

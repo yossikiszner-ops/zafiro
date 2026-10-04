@@ -27,5 +27,5 @@ internal fun Permission.isAppLevelGrantable(accessibilityServiceAvailable: Boole
     when (this) {
         Permission.OVERLAY, Permission.NOTIFICATION, Permission.STORAGE -> true
         Permission.ACCESSIBILITY -> accessibilityServiceAvailable
-        Permission.ROOT, Permission.SHIZUKU -> false
+        Permission.MICROPHONE, Permission.ROOT, Permission.SHIZUKU -> false
     }

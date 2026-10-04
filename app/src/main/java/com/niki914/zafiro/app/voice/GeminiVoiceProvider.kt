@@ -33,7 +33,7 @@ internal class GeminiVoiceProvider : VoiceTranscriber, VoiceSynthesizer {
     }
     private fun isGoogle(endpoint: String, provider: String): Boolean =
         runCatching { URI(endpoint).host == "generativelanguage.googleapis.com" }.getOrDefault(false) ||
-            (endpoint.isBlank() && provider.equals("gemini", true))
+            (endpoint.isBlank() && provider.lowercase() in setOf("google", "gemini"))
 
     private suspend fun request(path: String, body: JsonObject? = null): JsonObject {
         val request = Request.Builder().url("https://generativelanguage.googleapis.com/v1beta/$path")

@@ -23,4 +23,17 @@
     <string name="request_balanced">מאוזן</string>
     <string name="request_quality">איכות</string>
     <string name="request_observation">מודל: %1$s · tokens משוערים: %2$d קלט / %3$d פלט · כלים: %4$d/%5$d · %6$d מילישניות</string>
+    <string name="glass_studio">סטודיו עיצוב Glass</string>
+    <string name="glass_presets">סגנון מוכן</string>
+    <string name="glass_darkness">כהות</string>
+    <string name="glass_transparency">שקיפות</string>
+    <string name="glass_thickness">עומק אופטי</string>
+    <string name="glass_reflection">השתקפות משטח</string>
+    <string name="glass_edge">בהירות הקצוות</string>
+    <string name="glass_curvature">קימור</string>
+    <string name="glass_presence">סגנון נוכחות</string>
+    <string name="glass_intensity">עוצמת הנוכחות</string>
+    <string name="glass_reduced_motion">תנועה מופחתת</string>
+    <string name="network_lock">הגבלת חיבורי הסוכן</string>
+    <string name="network_scope">חיבורי AI ו־MCP מוגבלים ליעדים שהוגדרו. סקריפטים מקומיים דורשים אישור ויכולים ליצור חיבורי רשת משלהם. ההגבלה אינה חומת אש של המכשיר.</string>
 </resources>
