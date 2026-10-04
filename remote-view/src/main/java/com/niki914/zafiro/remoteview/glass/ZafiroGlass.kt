@@ -38,7 +38,7 @@ import kotlin.math.sin
 /** Public state vocabulary used by the overlay. The renderer never exposes tool/API jargon. */
 enum class ZafiroGlassPhase {
     Dormant, Wake, Listening, Understanding, Searching, Reading, Thinking, Tool,
-    Writing, Confirm, Sending, Speaking, Success, Permission, Recover, Error
+    Writing, Confirm, Sending, Speaking, Success, Permission, Recover, Error, Interrupted
 }
 
 /** Presence is deliberately broader than a face. Users can make intelligence abstract or invisible. */

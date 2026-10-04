@@ -43,7 +43,7 @@ import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallUiState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallViewModel
 import com.niki914.zafiro.remoteview.glass.ZafiroGlass
-import com.niki914.zafiro.remoteview.glass.ZafiroGlassPhase
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassPhaseMapper
 import com.niki914.zafiro.remoteview.glass.ZafiroGlassPresets
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
@@ -253,6 +253,7 @@ object FloatingBallOverlayManager {
                                 AgentState.Stopping -> null
                             },
                             isRunning = state.isRunning,
+                            glassPhase = ZafiroGlassPhaseMapper.fromAgentState(state),
                             lastOutcome = (state as? AgentState.Idle)?.lastOutcome,
                         )
                     )
@@ -304,12 +305,7 @@ object FloatingBallOverlayManager {
                     ) {
                         val uiState by vmInstance.uiStateFlow.collectAsState()
                         ZafiroGlass(
-                            phase = when {
-                                uiState.isApprovalPending -> ZafiroGlassPhase.Permission
-                                uiState.isRunning -> ZafiroGlassPhase.Thinking
-                                uiState.lastOutcome != null -> ZafiroGlassPhase.Success
-                                else -> ZafiroGlassPhase.Dormant
-                            },
+                            phase = uiState.glassPhase,
                             appearance = ZafiroGlassPresets.Signature,
                             expanded = false,
                             onExpandedChange = {

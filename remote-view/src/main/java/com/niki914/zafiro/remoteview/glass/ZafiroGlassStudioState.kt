@@ -1,5 +1,8 @@
 package com.niki914.zafiro.remoteview.glass
 
+import com.niki914.zafiro.api.model.AgentState
+import com.niki914.zafiro.api.model.TurnOutcome
+
 /**
  * Persistable, renderer-independent Glass configuration.
  * The app settings UI can edit this model without knowing how the overlay is rendered.
@@ -27,9 +30,24 @@ enum class MicroActionRichness { Off, Minimal, Balanced, Rich, Extreme }
  * Keep this mapping human-facing: implementation names never need to leak into the Glass.
  */
 object ZafiroGlassPhaseMapper {
+    fun fromAgentState(state: AgentState): ZafiroGlassPhase = when (state) {
+        is AgentState.Idle -> when (state.lastOutcome) {
+            TurnOutcome.Completed -> ZafiroGlassPhase.Success
+            TurnOutcome.Failed -> ZafiroGlassPhase.Error
+            TurnOutcome.Interrupted -> ZafiroGlassPhase.Interrupted
+            null -> ZafiroGlassPhase.Dormant
+        }
+        is AgentState.Generating -> if (state.text == null) ZafiroGlassPhase.Understanding else ZafiroGlassPhase.Writing
+        is AgentState.Thinking -> ZafiroGlassPhase.Thinking
+        is AgentState.ToolRunning -> fromActivity(state.toolName)
+        is AgentState.WaitingApproval -> ZafiroGlassPhase.Permission
+        AgentState.Stopping -> ZafiroGlassPhase.Interrupted
+    }
+
     fun fromActivity(activity: String?): ZafiroGlassPhase {
         val value = activity.orEmpty().lowercase()
         return when {
+            "interrupt" in value || "cancel" in value -> ZafiroGlassPhase.Interrupted
             value.isBlank() -> ZafiroGlassPhase.Dormant
             "listen" in value || "record" in value -> ZafiroGlassPhase.Listening
             "search" in value || "browse" in value || "web" in value -> ZafiroGlassPhase.Searching
