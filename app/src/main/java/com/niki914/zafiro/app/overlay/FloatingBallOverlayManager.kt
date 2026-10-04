@@ -304,7 +304,7 @@ object FloatingBallOverlayManager {
                     ) {
                         val uiState by vmInstance.uiStateFlow.collectAsState()
                         ZafiroGlass(
-                            phase = uiState.glassPhase,
+                            phase = com.niki914.zafiro.app.voice.VoiceActivity.phase.collectAsState().value ?: uiState.glassPhase,
                             appearance = ZafiroGlassPresets.Signature,
                             compactWidth = FloatingBallTokens.collapsedWidthDp,
                             compactHeight = FloatingBallTokens.collapsedHeightDp,

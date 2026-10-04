@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_start">Voice</string>
+    <string name="voice_settings">Voice settings</string>
+    <string name="voice_listening">Listening… · Stop</string>
+    <string name="voice_transcribing">Transcribing…</string>
+    <string name="voice_speaking">Speaking… · Stop</string>
+    <string name="voice_configuration">Configure a Gemini provider and API key</string>
+    <string name="voice_quota">Voice quota reached. Try later</string>
+    <string name="voice_microphone_error">Microphone unavailable</string>
+    <string name="voice_model_error">No compatible voice model. Check provider settings</string>
+    <string name="voice_error">Voice request failed. Tap to stop</string>
+    <string name="voice_privacy">Speech detection is local. Only completed speech is sent to your configured Gemini account. Recording stops when you leave this screen or after 30 seconds idle. No audio is saved.</string>
+    <string name="voice_name">Voice name (e.g. Charon, Puck, Kore)</string>
+    <string name="voice_style">Delivery style</string>
+    <string name="voice_model">TTS model (empty = automatic)</string>
+    <string name="voice_discover">Choose available TTS model</string>
+    <string name="voice_speed">Playback speed: %.2fx</string>
+    <string name="voice_auto">Speak replies</string>
+    <string name="voice_save">Save</string>
+</resources>

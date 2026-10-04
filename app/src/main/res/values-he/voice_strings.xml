@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_start">שיחה קולית</string>
+    <string name="voice_settings">הגדרות קול</string>
+    <string name="voice_listening">מקשיב… · עצירה</string>
+    <string name="voice_transcribing">מתמלל…</string>
+    <string name="voice_speaking">מדבר… · עצירה</string>
+    <string name="voice_configuration">יש להגדיר ספק Gemini ומפתח API</string>
+    <string name="voice_quota">מכסת הקול הסתיימה. נסה מאוחר יותר</string>
+    <string name="voice_microphone_error">המיקרופון אינו זמין</string>
+    <string name="voice_model_error">אין מודל קול מתאים. בדוק את הגדרות הספק</string>
+    <string name="voice_error">בקשת הקול נכשלה. לחץ לעצירה</string>
+    <string name="voice_privacy">זיהוי דיבור מתבצע בטלפון. רק דיבור שהסתיים נשלח לחשבון Gemini שהגדרת. ההקלטה נעצרת ביציאה מהמסך או אחרי 30 שניות ללא דיבור. האודיו אינו נשמר.</string>
+    <string name="voice_name">שם קול, לדוגמה Charon, Puck, Kore</string>
+    <string name="voice_style">סגנון דיבור</string>
+    <string name="voice_model">מודל קול (ריק = אוטומטי)</string>
+    <string name="voice_discover">בחירת מודל קול זמין</string>
+    <string name="voice_speed">מהירות השמעה: %.2fx</string>
+    <string name="voice_auto">הקראת תשובות</string>
+    <string name="voice_save">שמירה</string>
+</resources>
