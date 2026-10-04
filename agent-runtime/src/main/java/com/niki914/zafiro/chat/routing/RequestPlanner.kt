@@ -22,9 +22,13 @@ internal object RequestPlanner {
         ?.filterIsInstance<ContentBlock.Text>()?.joinToString("\n") { it.text }.orEmpty()
     fun complex(text: String): Boolean = text.length > 1200 || Regex("(?i)architect|proof|deep research|compare.*trade|debug|refactor|אדריכלות|מחקר מעמיק|הוכח|ניתוח מעמיק|תקן.*קוד").containsMatchIn(text)
     fun selectModel(configured: String, available: List<String>, text: String, images: Boolean, budget: RequestBudget, cooling: Set<String>): Pair<String, String> {
+        val suitable = available.filter { it.startsWith("gemini-") && listOf("tts", "live", "image", "native-audio", "transcribe", "embedding", "computer-use", "robotics").none(it::contains) && it !in cooling }
+        if (configured in cooling) {
+            val fallback = suitable.sortedWith(compareBy<String> { if ("pro" in it && (images || complex(text) || budget == RequestBudget.Quality)) 0 else 1 }.thenByDescending { it }).firstOrNull()
+            if (fallback != null) return fallback to "fallback_after_failure"
+        }
         if (images) return configured to "multimodal"
         if (complex(text) || budget == RequestBudget.Quality) return configured to "quality"
-        val suitable = available.filter { it.startsWith("gemini-") && listOf("tts", "live", "image", "native-audio", "transcribe", "embedding", "computer-use", "robotics").none(it::contains) && it !in cooling }
         val fast = suitable.sortedWith(compareBy<String> {
             when { "flash-lite" in it && budget == RequestBudget.Economy -> 0; "flash" in it && "lite" !in it -> 1; "flash-lite" in it -> 2; else -> 3 }
         }.thenBy { if ("preview" in it || "exp" in it) 1 else 0 }.thenByDescending { it }).firstOrNull { "flash" in it }

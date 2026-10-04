@@ -12,6 +12,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.niki914.zafiro.remoteview.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -105,10 +110,29 @@ fun ZafiroGlass(
         ZafiroGlassPhase.Listening -> Color(0xFF88D7FF)
         else -> Color(0xFFB5E7FF)
     }
-    val base = Color.Black.copy(alpha = appearance.darkness.coerceIn(0f,1f))
+    val label = stringResource(when (phase) {
+        ZafiroGlassPhase.Dormant -> R.string.glass_state_dormant
+        ZafiroGlassPhase.Wake -> R.string.glass_state_wake
+        ZafiroGlassPhase.Listening -> R.string.glass_state_listening
+        ZafiroGlassPhase.Understanding -> R.string.glass_state_understanding
+        ZafiroGlassPhase.Searching -> R.string.glass_state_searching
+        ZafiroGlassPhase.Reading -> R.string.glass_state_reading
+        ZafiroGlassPhase.Thinking -> R.string.glass_state_thinking
+        ZafiroGlassPhase.Tool -> R.string.glass_state_tool
+        ZafiroGlassPhase.Writing -> R.string.glass_state_writing
+        ZafiroGlassPhase.Confirm -> R.string.glass_state_confirm
+        ZafiroGlassPhase.Sending -> R.string.glass_state_sending
+        ZafiroGlassPhase.Speaking -> R.string.glass_state_speaking
+        ZafiroGlassPhase.Success -> R.string.glass_state_success
+        ZafiroGlassPhase.Permission -> R.string.glass_state_permission
+        ZafiroGlassPhase.Recover -> R.string.glass_state_recover
+        ZafiroGlassPhase.Error -> R.string.glass_state_error
+        ZafiroGlassPhase.Interrupted -> R.string.glass_state_interrupted
+    })
     Box(
         modifier = modifier
             .width(width).height(height)
+            .semantics { contentDescription = label }
             .graphicsLayer { alpha = 1f - appearance.transparency * .18f }
             .clip(RoundedCornerShape(radius))
             .zafiroGlassMaterial(appearance, radius, accent)
@@ -126,7 +150,9 @@ fun ZafiroGlass(
             },
         contentAlignment = Alignment.Center
     ) {
-        ZafiroPresence(appearance.presence, phase, accent, appearance.presenceIntensity)
+        if (appearance.presence == ZafiroPresenceStyle.Invisible || appearance.presenceIntensity <= 0f) {
+            Text(label, color = Color.White, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        } else ZafiroPresence(appearance.presence, phase, accent, appearance.presenceIntensity)
     }
 }
 

@@ -79,7 +79,7 @@ internal class VoiceSession(
                     if (!accepting && playback?.isActive != true) { vad.reset(); preRoll.clear(); utterance = null; continue }
                     val bytes = VoiceAudio.pcm(frame, count)
                     preRoll.addLast(bytes); while (preRoll.size > 10) preRoll.removeFirst()
-                    when (vad.accept(frame, count, speechClassifier?.isSpeech(if (count == frame.size) frame else frame.copyOf(frame.size)))) {
+                    when (vad.accept(frame, count, speechClassifier?.isSpeech(if (count == frame.size) frame else ShortArray(frame.size).also { frame.copyInto(it, endIndex = count) }))) {
                         LocalVoiceDetector.Event.Start -> {
                             silentFrames = 0
                             interruptSpeech()
@@ -102,7 +102,7 @@ internal class VoiceSession(
                     }
                 }
             } catch (cancel: CancellationException) { throw cancel }
-            catch (e: Exception) { fail((e as? VoiceFailure)?.problem ?: VoiceProblem.Microphone) }
+            catch (e: Exception) { if (epoch == generation) fail((e as? VoiceFailure)?.problem ?: VoiceProblem.Microphone) }
             finally {
                 speechClassifier?.close(); aec?.release(); noise?.release()
                 ownedRecorder?.let { runCatching { it.stop() }; it.release(); if (microphone === it) microphone = null }
@@ -119,7 +119,11 @@ internal class VoiceSession(
             try {
                 val text = transcriber.transcribe(VoiceAudio.wav(pcm))
                 if (text.isBlank()) { accepting = true; publish(ZafiroGlassPhase.Listening) }
-                else { mutable.value = mutable.value.copy(transcript = text); onTranscript(text) }
+                else {
+                    mutable.value = mutable.value.copy(transcript = text, phase = ZafiroGlassPhase.Thinking)
+                    VoiceActivity.phase.value = null // Actual AgentState owns activity while executing.
+                    onTranscript(text)
+                }
             } catch (cancel: CancellationException) { throw cancel }
             catch (e: Exception) { accepting = true; fail((e as? VoiceFailure)?.problem ?: VoiceProblem.Provider) }
         }

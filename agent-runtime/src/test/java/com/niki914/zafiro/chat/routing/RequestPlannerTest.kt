@@ -18,6 +18,11 @@ class RequestPlannerTest {
     @Test fun cooledModelIsNotReusedForFastRoute() {
         assertEquals("configured", RequestPlanner.selectModel("configured", listOf("gemini-test-flash"), "hello", false, RequestBudget.Economy, setOf("gemini-test-flash")).first)
     }
+    @Test fun qualityFallsBackOnlyToAvailableNonCoolingModel() {
+        val route = RequestPlanner.selectModel("gemini-test-pro", listOf("gemini-test-pro", "gemini-next-pro", "gemini-test-flash-tts"), "deep research", false, RequestBudget.Quality, setOf("gemini-test-pro"))
+        assertEquals("gemini-next-pro", route.first)
+        assertEquals("fallback_after_failure", route.second)
+    }
     @Test fun memoryProjectionPreservesRecentToolExchange() {
         val call = Message.Assistant(AssistantMessage(listOf(ContentBlock.ToolCall("call", "launch_app", "{}"))))
         val result = Message.ToolResult("call", "launch_app", ToolCallOutcome.Success("done"))

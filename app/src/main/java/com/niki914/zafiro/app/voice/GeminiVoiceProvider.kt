@@ -19,7 +19,7 @@ internal interface VoiceSynthesizer { suspend fun synthesize(text: String, voice
 
 internal class GeminiVoiceProvider : VoiceTranscriber, VoiceSynthesizer {
     private val json = Json { ignoreUnknownKeys = true }
-    private val client = SharedHttp.client.newBuilder().callTimeout(60, TimeUnit.SECONDS).build()
+    private val client = SharedHttp.client.newBuilder().callTimeout(60, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
     private var models = emptyList<String>()
     private var credentialId: String? = null
     private suspend fun key(): String {

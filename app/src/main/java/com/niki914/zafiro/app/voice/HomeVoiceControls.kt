@@ -89,7 +89,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
             if (status.active) { ownsResponse = false; session.stop() }
             else scope.launch {
                 permissions.request(com.niki914.zafiro.business.permission.Permission.MICROPHONE)
-                session.start()
+                if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) session.start()
             }
         }) {
             Icon(if (status.active) Icons.Default.Stop else Icons.Default.Mic, contentDescription = null)
@@ -105,6 +105,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                 !status.active -> R.string.voice_start
                 status.phase == ZafiroGlassPhase.Speaking -> R.string.voice_speaking
                 status.phase == ZafiroGlassPhase.Understanding -> R.string.voice_transcribing
+                status.phase == ZafiroGlassPhase.Thinking -> R.string.voice_working
                 else -> R.string.voice_listening
             }), maxLines = 2)
         }

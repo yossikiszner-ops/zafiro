@@ -36,4 +36,5 @@
     <string name="glass_reduced_motion">Reduced motion</string>
     <string name="network_lock">Restrict managed connections</string>
     <string name="network_scope">AI and MCP connections are limited to configured destinations. Local scripts require approval and can use their own network connections. This is not a device firewall.</string>
+    <string name="voice_working">Working… · Stop</string>
 </resources>

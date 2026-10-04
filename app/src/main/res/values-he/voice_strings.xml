@@ -36,4 +36,5 @@
     <string name="glass_reduced_motion">תנועה מופחתת</string>
     <string name="network_lock">הגבלת חיבורי הסוכן</string>
     <string name="network_scope">חיבורי AI ו־MCP מוגבלים ליעדים שהוגדרו. סקריפטים מקומיים דורשים אישור ויכולים ליצור חיבורי רשת משלהם. ההגבלה אינה חומת אש של המכשיר.</string>
+    <string name="voice_working">פועל… · עצירה</string>
 </resources>
