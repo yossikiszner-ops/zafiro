@@ -77,6 +77,7 @@ android {
 }
 
 dependencies {
+    implementation("com.github.gkonovalov.android-vad:webrtc:2.0.10")
     implementation(project(":agent-runtime"))
     implementation(project(":business:permission"))
     implementation(project(":business:files"))

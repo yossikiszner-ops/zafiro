@@ -32,7 +32,6 @@ import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.remoteview.floatingball.DockSide
-import com.niki914.zafiro.remoteview.floatingball.FloatingBallCollapsedBall
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallDetailMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallEffect
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallGeometry
@@ -42,6 +41,9 @@ import com.niki914.zafiro.remoteview.floatingball.FloatingBallState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallUiState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallViewModel
+import com.niki914.zafiro.remoteview.glass.ZafiroGlass
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassPhaseMapper
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassPresets
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.launch
@@ -250,6 +252,7 @@ object FloatingBallOverlayManager {
                                 AgentState.Stopping -> null
                             },
                             isRunning = state.isRunning,
+                            glassPhase = ZafiroGlassPhaseMapper.fromAgentState(state),
                             lastOutcome = (state as? AgentState.Idle)?.lastOutcome,
                         )
                     )
@@ -299,9 +302,17 @@ object FloatingBallOverlayManager {
                         dynamicColor = themePrefs.seedColor == null,
                         seedColor = seed,
                     ) {
-                        FloatingBallCollapsedBall(
-                            onClick = {
-                                vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
+                        val uiState by vmInstance.uiStateFlow.collectAsState()
+                        ZafiroGlass(
+                            phase = com.niki914.zafiro.app.voice.VoiceActivity.phase.collectAsState().value ?: uiState.glassPhase,
+                            appearance = com.niki914.zafiro.app.voice.GlassPreferences.appearance.collectAsState().value,
+                            reducedMotion = com.niki914.zafiro.app.voice.GlassPreferences.reducedMotion.collectAsState().value,
+                            compactWidth = FloatingBallTokens.collapsedWidthDp,
+                            compactHeight = FloatingBallTokens.collapsedHeightDp,
+                            onClick = { ballLayout.requestExpand() },
+                            expanded = false,
+                            onExpandedChange = {
+                                if (it) vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
                             },
                         )
                     }
@@ -366,6 +377,8 @@ object FloatingBallOverlayManager {
                     ) {
                         FloatingBallMorphCard(
                             state = uiState.ballState,
+                            appearance = com.niki914.zafiro.app.voice.GlassPreferences.appearance.collectAsState().value,
+                            reducedMotion = com.niki914.zafiro.app.voice.GlassPreferences.reducedMotion.collectAsState().value,
                             dockSide = uiState.dockSide,
                             preview = uiState.preview,
                             approvalRequest = uiState.approvalRequest,

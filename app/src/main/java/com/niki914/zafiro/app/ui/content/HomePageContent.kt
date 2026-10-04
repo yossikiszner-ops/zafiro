@@ -747,6 +747,14 @@ private fun HomePageContentBody(
             )
         }
 
+        com.niki914.zafiro.app.voice.HomeVoiceControls(
+            onInputChange = onInputChange,
+            onSend = onSendClick,
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .padding(bottom = composerBottomPadding + composerHeight.value + 8.dp + if (pendingImages.isNotEmpty() || pendingFiles.isNotEmpty()) 68.dp else 0.dp)
+                .padding(horizontal = 20.dp),
+        )
+
         LiquidChatComposer(
             value = uiState.input,
             onValueChange = onInputChange,

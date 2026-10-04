@@ -5,12 +5,14 @@ import com.niki914.xsettings.XSettings
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.api.model.TurnOutcome
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassPhase
 import com.niki914.zafiro.service.requireService
 
 /**
  * 悬浮球统一 MVI UI 状态。
  */
 data class FloatingBallUiState(
+    val glassPhase: ZafiroGlassPhase = ZafiroGlassPhase.Dormant,
     val ballState: FloatingBallState = FloatingBallState.Collapsed,
     val isDetailOpen: Boolean = false,
     val dockSide: DockSide = DockSide.Right,
@@ -45,6 +47,7 @@ sealed interface FloatingBallIntent {
     data class UpdateAgentStatus(
         val preview: String?,
         val isRunning: Boolean,
+        val glassPhase: ZafiroGlassPhase = ZafiroGlassPhase.Dormant,
         val lastOutcome: TurnOutcome? = null,
     ) : FloatingBallIntent
     data class UpdateApprovalRequest(val request: ApprovalRequest?) : FloatingBallIntent
@@ -156,6 +159,7 @@ class FloatingBallViewModel :
                 updateState {
                     copy(
                         preview = intent.preview,
+                        glassPhase = intent.glassPhase,
                         isStopEnabled = intent.isRunning,
                         lastOutcome = intent.lastOutcome,
                     )
