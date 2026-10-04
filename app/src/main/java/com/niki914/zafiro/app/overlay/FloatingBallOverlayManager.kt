@@ -42,6 +42,9 @@ import com.niki914.zafiro.remoteview.floatingball.FloatingBallState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallTokens
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallUiState
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallViewModel
+import com.niki914.zafiro.remoteview.glass.ZafiroGlass
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassPhase
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassPresets
 import com.niki914.zafiro.service.requireService
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.launch
@@ -299,9 +302,18 @@ object FloatingBallOverlayManager {
                         dynamicColor = themePrefs.seedColor == null,
                         seedColor = seed,
                     ) {
-                        FloatingBallCollapsedBall(
-                            onClick = {
-                                vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
+                        val uiState by vmInstance.uiStateFlow.collectAsState()
+                        ZafiroGlass(
+                            phase = when {
+                                uiState.isApprovalPending -> ZafiroGlassPhase.Permission
+                                uiState.isRunning -> ZafiroGlassPhase.Thinking
+                                uiState.lastOutcome != null -> ZafiroGlassPhase.Success
+                                else -> ZafiroGlassPhase.Dormant
+                            },
+                            appearance = ZafiroGlassPresets.Signature,
+                            expanded = false,
+                            onExpandedChange = {
+                                if (it) vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
                             },
                         )
                     }
