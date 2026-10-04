@@ -3,6 +3,7 @@ package com.niki914.zafiro.remoteview.glass
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.cos
@@ -77,6 +79,9 @@ fun ZafiroGlass(
     phase: ZafiroGlassPhase,
     modifier: Modifier = Modifier,
     appearance: ZafiroGlassAppearance = ZafiroGlassPresets.Signature,
+    compactWidth: Dp = 156.dp,
+    compactHeight: Dp = 48.dp,
+    onClick: () -> Unit = {},
     expanded: Boolean = false,
     onExpandedChange: (Boolean) -> Unit = {},
 ) {
@@ -89,9 +94,9 @@ fun ZafiroGlass(
         )
     }
     val p = (expansion.value + drag).coerceIn(0f, 1f)
-    val width = (156 + 176 * p).dp
-    val height = (48 + 190 * p).dp
-    val radius = (24 - 8 * p).dp
+    val width = compactWidth + (332.dp - compactWidth) * p
+    val height = compactHeight + (238.dp - compactHeight) * p
+    val radius = ((compactHeight.value / 2) * appearance.curvature.coerceIn(0f, 1f) * (1f - .33f * p)).dp
     val accent = when (phase) {
         ZafiroGlassPhase.Success -> Color(0xFF78F5B0)
         ZafiroGlassPhase.Error -> Color(0xFFFF7373)
@@ -121,6 +126,7 @@ fun ZafiroGlass(
                     style = Stroke(width = 1.dp.toPx())
                 )
             }
+            .clickable(onClick = onClick)
             .pointerInput(expanded) {
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dy -> drag = (drag + dy / 260f).coerceIn(-1f,1f) },
@@ -140,8 +146,8 @@ fun ZafiroGlass(
 
 @Composable
 private fun ZafiroPresence(style: ZafiroPresenceStyle, phase: ZafiroGlassPhase, accent: Color, intensity: Float) {
-    if (style == ZafiroPresenceStyle.Invisible) return
-    val energy = if (phase == ZafiroGlassPhase.Dormant) .32f else intensity.coerceIn(.15f,1f)
+    if (style == ZafiroPresenceStyle.Invisible || intensity <= 0f) return
+    val energy = intensity.coerceIn(0f, 1f) * if (phase == ZafiroGlassPhase.Dormant) .32f else 1f
     Canvas(Modifier.fillMaxSize()) {
         val c = center
         when (style) {

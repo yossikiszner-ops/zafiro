@@ -32,7 +32,6 @@ import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.ui.model.ThemeController
 import com.niki914.zafiro.app.ui.model.ToolPresentation
 import com.niki914.zafiro.remoteview.floatingball.DockSide
-import com.niki914.zafiro.remoteview.floatingball.FloatingBallCollapsedBall
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallDetailMorphCard
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallEffect
 import com.niki914.zafiro.remoteview.floatingball.FloatingBallGeometry
@@ -307,6 +306,9 @@ object FloatingBallOverlayManager {
                         ZafiroGlass(
                             phase = uiState.glassPhase,
                             appearance = ZafiroGlassPresets.Signature,
+                            compactWidth = FloatingBallTokens.collapsedWidthDp,
+                            compactHeight = FloatingBallTokens.collapsedHeightDp,
+                            onClick = { ballLayout.requestExpand() },
                             expanded = false,
                             onExpandedChange = {
                                 if (it) vmInstance.sendIntent(FloatingBallIntent.RequestExpand)
