@@ -37,11 +37,8 @@ private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
 private const val KEEP_SCREEN_ON_ROW_ID = "general.keep_screen_on"
 
-private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
-private const val LANGUAGE_TAG_ZH_TW = "zh-TW"
 private const val LANGUAGE_TAG_EN = "en"
-private const val LANGUAGE_TAG_ES = "es"
-private const val LANGUAGE_TAG_JA = "ja"
+private const val LANGUAGE_TAG_HE = "he"
 
 data class LanguageOption(
     /** BCP-47 tag；空串 = 跟随系统。 */
@@ -57,11 +54,8 @@ private fun languageOptions(): List<LanguageOption> {
             tag = "",
             label = stringResource(R.string.ui_settings_general_language_follow_system)
         ),
-        LanguageOption(tag = LANGUAGE_TAG_ZH_CN, label = "简体中文"),
-        LanguageOption(tag = LANGUAGE_TAG_ZH_TW, label = "繁體中文"),
         LanguageOption(tag = LANGUAGE_TAG_EN, label = "English"),
-        LanguageOption(tag = LANGUAGE_TAG_ES, label = "Español"),
-        LanguageOption(tag = LANGUAGE_TAG_JA, label = "日本語"),
+        LanguageOption(tag = LANGUAGE_TAG_HE, label = "עברית"),
     )
 }
 

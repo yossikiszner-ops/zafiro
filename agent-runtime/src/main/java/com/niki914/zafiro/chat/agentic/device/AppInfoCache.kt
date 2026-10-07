@@ -202,6 +202,7 @@ class AppInfoCache(
             Locale.SIMPLIFIED_CHINESE,
             Locale.TRADITIONAL_CHINESE,
             Locale.ENGLISH,
+            Locale("he"),
             Locale.JAPAN,
             Locale("es"),
         )

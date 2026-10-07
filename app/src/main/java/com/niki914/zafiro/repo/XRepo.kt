@@ -324,9 +324,9 @@ object XRepo {
     suspend fun setLastOpenedConversationId(value: String) =
         lastOpenedConversationIdField.set(value)
 
-    suspend fun languageTag(): String = languageTagField.get()
+    suspend fun languageTag(): String = UiLanguage.normalize(languageTagField.get())
 
-    suspend fun setLanguageTag(tag: String) = languageTagField.set(tag)
+    suspend fun setLanguageTag(tag: String) = languageTagField.set(UiLanguage.normalize(tag))
 
     suspend fun loadLastConversationOnStartup(): Boolean = loadLastConversationOnStartupField.get()
 

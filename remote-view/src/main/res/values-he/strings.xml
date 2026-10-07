@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="tool_permission_dialog_title">בקשה לביצוע פעולה</string>
+  <string name="tool_permission_request_intro">הכלי ״%1$s״ של Zafiro מבקש לבצע את הפקודה הבאה:</string>
+  <string name="tool_permission_matched_rule">נמצא כלל מתאים: ״%1$s״</string>
+  <string name="tool_permission_allow">אישור חד־פעמי</string>
+  <string name="tool_permission_deny">דחייה</string>
+  <string name="floating_ball_approval_pending">פעולה ממתינה לאישור (%1$s)</string>
+  <string name="floating_ball_approval_reason_unknown">ממתין</string>
+  <string name="floating_ball_approval_view_details">הקש להצגת פרטים</string>
+  <string name="floating_ball_tool_running">מפעיל %1$s</string>
+  <string name="screen_control_consent_title">בקשת הרשאה לשליטה במסך</string>
+  <string name="screen_control_consent_body">Zafiro זקוק להרשאות נגישות והצגה מעל אפליקציות אחרות כדי לשלוט במסך.</string>
+  <string name="screen_control_consent_agree">אישור</string>
+</resources>

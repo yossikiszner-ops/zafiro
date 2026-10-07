@@ -46,10 +46,10 @@ class XRepoDomainSettingsTest {
 
         XRepo.setOnboardingCompleted(true)
         XRepo.setLoadLastConversationOnStartup(true)
-        XRepo.setLanguageTag("zh-CN")
+        XRepo.setLanguageTag("he")
 
         assertTrue(XRepo.loadLastConversationOnStartup())
-        assertEquals("zh-CN", XRepo.languageTag())
+        assertEquals("he", XRepo.languageTag())
         assertTrue(XRepo.onboardingCompleted())
     }
 
@@ -110,10 +110,10 @@ class XRepoDomainSettingsTest {
         XRepo.installStoreForTest(store)
         XRepo.init(context)
 
-        XRepo.setLanguageTag("  zh-CN  ")
+        XRepo.setLanguageTag("  he  ")
         XRepo.setLastOpenedConversationId("  conv-1  ")
 
-        assertEquals("zh-CN", XRepo.languageTag())
+        assertEquals("he", XRepo.languageTag())
         assertEquals("conv-1", XRepo.lastOpenedConversationId())
     }
 
