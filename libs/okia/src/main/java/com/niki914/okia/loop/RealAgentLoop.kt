@@ -233,7 +233,8 @@ internal class RealAgentLoop : AgentLoop {
                         return SegmentOutcome.Finished(TurnResult.Failed(send.error))
                     }
                     // 传输层耗尽 / 不可重试 → 回合层判断（嵌套 G6）
-                    if (send.error.code.isRetryable && turnAttempt < turnMax) {
+                    if (send.error.code.isRetryable &&
+                        (send.error.retryDelayMs ?: 0) <= request.retryPolicy.maxServerWaitMs && turnAttempt < turnMax) {
                         turnAttempt++
                         val delay = turnPolicy!!.delayMs(turnAttempt)
                         onEvent(
@@ -356,6 +357,7 @@ internal class RealAgentLoop : AgentLoop {
             if (failure.code.isRetryable && attempt < max) {
                 attempt++
                 val delay = failure.retryDelayMs ?: policy.delayMs(attempt)
+                if (delay > policy.maxServerWaitMs) return SendResult.Failed(failure)
                 val reason = failure.statusCode?.let { "HTTP $it" } ?: "stream failed"
                 onEvent(TurnEvent.RetryScheduled(attempt, max, delay, reason))
                 delay(delay)

@@ -282,7 +282,7 @@ object LLMController {
             // 热更新超时/重试策略：实例复用时也要跟随设置变化，否则改设置要冷启才生效
             idleTimeoutSeconds = configWithoutRuntimePrompt.idleTimeoutSeconds
                 ?: NO_IDLE_TIMEOUT_SECONDS
-            retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
+            retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts, maxServerWaitMs = 10_000)
             // 最大输出长度热更新：与超时/重试同层（实例复用时跟随设置变化）
             maxTokens = configWithoutRuntimePrompt.maxTokens
             // 思考强度热更新：与超时/重试同层（实例复用时跟随设置变化）
@@ -395,13 +395,14 @@ object LLMController {
     ): Flow<LlmStreamEvent> = channelFlow {
         try {
             val state = try {
-                refresh()
+                withTimeoutOrNull(20_000) { refresh() }
+                    ?: throw RuntimePreparationTimeout()
                 runtimeState
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) {
                     throw throwable
                 }
-                runtimeState ?: run {
+                (if (throwable is RuntimePreparationTimeout) null else runtimeState) ?: run {
                     // 原文透传不造文案：异常 message 多为内部码（ConfigRequired）或
                     // 英文原文，翻译归直接消费方（UI toAssistantErrorUi / Service map）
                     val code = throwable.toUserErrorCode()
@@ -688,7 +689,7 @@ object LLMController {
             httpEngine = com.niki914.zafiro.chat.routing.RoutingRuntime
             // null = 不超时（General Settings 提供「不限时」选项）
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
-            retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
+            retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts, maxServerWaitMs = 10_000)
             // 单次输出上限：不设就用 okia 骨架的 4096，长回答/大工具参数会被切断
             maxTokens = config.maxTokens
             toolRegistry = this@LLMController.toolRegistry
@@ -967,8 +968,11 @@ object LLMController {
         }
     }
 
+    private class RuntimePreparationTimeout : Exception("Runtime preparation timed out")
+
     private fun Throwable.toUserErrorCode(): LlmErrorCode? {
         return when (this) {
+            is RuntimePreparationTimeout -> LlmErrorCode.IdleTimeout
             is LlmConfigRequiredException -> LlmErrorCode.ConfigRequired
             // OKIA 并发契约违例（活跃回合中 send）转 TurnConflict，保持 UI 行为
             is IllegalStateException -> LlmErrorCode.TurnConflict

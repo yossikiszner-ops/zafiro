@@ -25,6 +25,8 @@ internal class VoiceSession(
 ) {
     private val mutable = MutableStateFlow(VoiceStatus())
     val status = mutable.asStateFlow()
+    private var liveInput: LiveSpeechInput? = null
+    private var liveDisabled = false
     private var microphone: AudioRecord? = null
     private var capture: Job? = null
     @Volatile private var epoch = 0
@@ -52,6 +54,11 @@ internal class VoiceSession(
         val generation = ++epoch
         accepting = true
         mutable.value = VoiceStatus(active = true, phase = ZafiroGlassPhase.Listening)
+        VoiceActivity.liveTranscript.value = ""
+        if (!liveDisabled && android.speech.SpeechRecognizer.isRecognitionAvailable(context)) {
+            startLive(generation)
+            return
+        }
         capture = scope.launch(Dispatchers.IO) {
             var ownedRecorder: AudioRecord? = null
             var speechClassifier: com.konovalov.vad.webrtc.VadWebRTC? = null
@@ -63,13 +70,13 @@ internal class VoiceSession(
                 ownedRecorder = recorder
                 microphone = recorder
                 if (recorder.state != AudioRecord.STATE_INITIALIZED) throw VoiceFailure(VoiceProblem.Microphone)
-                if (AcousticEchoCanceler.isAvailable()) aec = AcousticEchoCanceler.create(recorder.audioSessionId)?.apply { enabled = true }
-                if (NoiseSuppressor.isAvailable()) noise = NoiseSuppressor.create(recorder.audioSessionId)?.apply { enabled = true }
+                if (AcousticEchoCanceler.isAvailable()) aec = runCatching { AcousticEchoCanceler.create(recorder.audioSessionId)?.apply { enabled = true } }.getOrNull()
+                if (NoiseSuppressor.isAvailable()) noise = runCatching { NoiseSuppressor.create(recorder.audioSessionId)?.apply { enabled = true } }.getOrNull()
                 speechClassifier = try {
                     com.konovalov.vad.webrtc.VadWebRTC(
                         sampleRate = com.konovalov.vad.webrtc.config.SampleRate.SAMPLE_RATE_16K,
                         frameSize = com.konovalov.vad.webrtc.config.FrameSize.FRAME_SIZE_320,
-                        mode = com.konovalov.vad.webrtc.config.Mode.VERY_AGGRESSIVE,
+                        mode = com.konovalov.vad.webrtc.config.Mode.NORMAL,
                     )
                 } catch (_: LinkageError) { null } catch (_: Exception) { null } // Unsupported VAD configuration: local energy fallback.
                 recorder.startRecording()
@@ -114,6 +121,48 @@ internal class VoiceSession(
             }
         }
     }
+    private fun startLive(generation: Int) {
+        val input = LiveSpeechInput(context,
+            canAccept = { epoch == generation && accepting && inputGate.canCapture(android.os.SystemClock.elapsedRealtime()) },
+            onPartial = { VoiceActivity.liveTranscript.value = it },
+            onFinal = { submitRecognized(it) },
+            onUnavailable = {
+                // Some devices have no recognizer for the selected language. Preserve API STT.
+                liveDisabled = true
+                liveInput?.cancel(); liveInput = null
+                capture?.cancel(); capture = null
+                start()
+            },
+        )
+        liveInput = input
+        capture = scope.launch(Dispatchers.Main.immediate) {
+            var lastInputAt = android.os.SystemClock.elapsedRealtime()
+            var lastPartial = ""
+            try {
+                while (isActive && epoch == generation) {
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (accepting && inputGate.canCapture(now)) {
+                        if (!input.listening) {
+                            delay(350)
+                            if (epoch != generation || !accepting || !inputGate.canCapture(android.os.SystemClock.elapsedRealtime())) continue
+                            input.start()
+                        }
+                        val partial = VoiceActivity.liveTranscript.value
+                        if (partial != lastPartial) { lastPartial = partial; lastInputAt = now }
+                        if (now - lastInputAt >= 30_000) { stop(); break }
+                    } else { input.cancel(); lastInputAt = now }
+                    delay(50)
+                }
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (_: Exception) {
+                if (epoch == generation) {
+                    liveDisabled = true
+                    input.cancel(); liveInput = null; capture = null
+                    start()
+                }
+            } finally { input.cancel() }
+        }
+    }
     private fun transcribe(pcm: ByteArray) {
         accepting = false
         awaitingAgent = true
@@ -135,6 +184,8 @@ internal class VoiceSession(
         if (!mutable.value.active && !preview) return
         if (!preview && !announcement) awaitingAgent = false
         accepting = false
+        liveInput?.cancel()
+        VoiceActivity.liveTranscript.value = ""
         if ((!autoSpeak && !preview) || text.isBlank()) { accepting = !awaitingAgent; if (accepting) publish(ZafiroGlassPhase.Listening); return }
         interruptSpeech()
         val lease = inputGate.beginPlayback()
@@ -196,6 +247,8 @@ internal class VoiceSession(
     }
     fun stop() {
         epoch++
+        liveInput?.cancel(); liveInput = null
+        VoiceActivity.liveTranscript.value = ""
         capture?.cancel(); capture = null; processing?.cancel(); processing = null
         interruptSpeech(); runCatching { microphone?.stop() }
         awaitingAgent = false; accepting = true; mutable.value = VoiceStatus(); VoiceActivity.phase.value = null
@@ -203,6 +256,8 @@ internal class VoiceSession(
     fun submitRecognized(text: String) {
         if (text.isBlank()) return
         awaitingAgent = true; accepting = false
+        liveInput?.cancel()
+        VoiceActivity.liveTranscript.value = ""
         mutable.value = mutable.value.copy(transcript = text, phase = ZafiroGlassPhase.Thinking)
         VoiceActivity.phase.value = null
         onTranscript(text)
@@ -214,4 +269,7 @@ internal class VoiceSession(
     private fun publish(phase: ZafiroGlassPhase) { mutable.value = mutable.value.copy(phase = phase, problem = null); VoiceActivity.phase.value = phase }
 }
 internal data class VoiceStatus(val active: Boolean = false, val phase: ZafiroGlassPhase = ZafiroGlassPhase.Dormant, val transcript: String = "", val problem: VoiceProblem? = null)
-internal object VoiceActivity { val phase = MutableStateFlow<ZafiroGlassPhase?>(null) }
+internal object VoiceActivity {
+    val phase = MutableStateFlow<ZafiroGlassPhase?>(null)
+    val liveTranscript = MutableStateFlow("")
+}

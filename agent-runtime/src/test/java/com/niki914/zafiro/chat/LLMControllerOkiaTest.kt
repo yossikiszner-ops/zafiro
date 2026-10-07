@@ -45,6 +45,19 @@ import org.junit.Test
 
 class LLMControllerOkiaTest {
 
+    // Protects text chat from waiting forever when runtime/session preparation stalls.
+    @Test
+    fun stalledPreparationEmitsTimeoutInsteadOfRemainingBusy() = runTest {
+        installRuntimeSettingsGatewayForTest(FakeRuntimeSettingsGateway(llmConfig = validLlmConfig()))
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+            CompletableDeferred<Okia>().await()
+        }
+        val events = LLMController.stream("hello").toList()
+        val errors = events.filterIsInstance<LlmStreamEvent.Error>()
+        assertEquals(1, errors.size)
+        assertEquals(LlmErrorCode.IdleTimeout, errors.single().code)
+    }
+
     @get:Rule
     val silentLogger = SilentLoggerRule()
 

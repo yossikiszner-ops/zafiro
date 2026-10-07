@@ -807,6 +807,7 @@ private fun HomePageContentBody(
             )
         }
 
+        val liveTranscript by com.niki914.zafiro.app.voice.VoiceActivity.liveTranscript.collectAsState()
         val currentVoiceInput by rememberUpdatedState(onInputChange)
         val currentVoiceSend by rememberUpdatedState(onSendClick)
         val voiceControls = remember {
@@ -818,8 +819,11 @@ private fun HomePageContentBody(
         }
         LiquidChatComposer(
             voiceContent = voiceControls,
-            value = uiState.input,
-            onValueChange = onInputChange,
+            value = liveTranscript.ifBlank { uiState.input },
+            onValueChange = {
+                if (liveTranscript.isNotBlank()) com.niki914.zafiro.app.voice.VoiceController.stop(context)
+                onInputChange(it)
+            },
             onSendClick = onSendClick,
             onStopClick = onStopClick,
             isGenerating = uiState.isGenerating,

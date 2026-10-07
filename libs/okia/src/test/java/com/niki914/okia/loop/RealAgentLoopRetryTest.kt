@@ -43,6 +43,23 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class RealAgentLoopRetryTest {
 
+    // Protects interactive chat from sleeping for hours after a quota response.
+    @Test
+    fun longServerCooldownEndsRequestWithoutNestedRetry() = runTest {
+        val engine = FakeHttpEngine()
+        var calls = 0
+        engine.streamResult = { calls++; errorResponse(429, headers = mapOf("Retry-After" to "34500")) }
+        val emitted = mutableListOf<TurnEvent>()
+        val request = loopRequest(listOf(completed()), engine = engine).copy(
+            retryPolicy = RetryPolicy(maxServerWaitMs = 10_000),
+            options = LoopOptions(turnRetryPolicy = RetryPolicy(maxAttempts = 3)),
+        )
+        val result = runLoop(request, emitted)
+        assertTrue(result is TurnResult.Failed)
+        assertEquals(1, calls)
+        assertTrue(emitted.none { it is TurnEvent.RetryScheduled })
+    }
+
     // ── fixtures ───────────────────────────────────────────────────────────
 
     private fun user(text: String) = Message.User(listOf(ContentBlock.Text(text)))

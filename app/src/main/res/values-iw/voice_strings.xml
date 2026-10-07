@@ -10,7 +10,7 @@
     <string name="voice_microphone_error">המיקרופון אינו זמין</string>
     <string name="voice_model_error">אין מודל קול מתאים. בדוק את הגדרות הספק</string>
     <string name="voice_error">בקשת הקול נכשלה. לחץ לעצירה</string>
-    <string name="voice_privacy">זיהוי דיבור מתבצע בטלפון. רק דיבור שהסתיים נשלח לחשבון Gemini שהגדרת. הודעה קבועה מאפשרת קול גם באפליקציות אחרות. ההקלטה נעצרת אחרי 30 שניות ללא דיבור; סשן השכמה של Jarvis נעצר אחרי 30 דקות. האודיו אינו נשמר. לחיצה על המיקרופון בזמן ההקראה עוצרת אותה.</string>
+    <string name="voice_privacy">תמלול חי משתמש בשירות הדיבור של Android, שעשוי לעבד קול באינטרנט. אם השירות אינו זמין, דיבור שהסתיים נשלח לחשבון Gemini שהגדרת. הודעה קבועה מאפשרת קול גם באפליקציות אחרות. ההקלטה נעצרת אחרי 30 שניות ללא דיבור; סשן השכמה של Jarvis נעצר אחרי 30 דקות. Zafiro אינו שומר אודיו. לחיצה על המיקרופון בזמן ההקראה עוצרת אותה.</string>
     <string name="voice_name">שם קול, לדוגמה Charon, Puck, Kore</string>
     <string name="voice_style">סגנון דיבור</string>
     <string name="voice_model">מודל קול (ריק = אוטומטי)</string>
