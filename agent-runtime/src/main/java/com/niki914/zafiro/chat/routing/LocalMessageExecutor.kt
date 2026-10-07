@@ -40,9 +40,15 @@ internal object LocalMessageExecutor {
                 }
                 emit(TurnEvent.ToolSucceeded(0, call, ToolCallOutcome.Success(result.toJsonString()), partial))
             }
+            var previousScreen = ScreenBrain.state.value
             suspend fun awaitScreen(predicate: (ScreenState) -> Boolean): ScreenState =
                 withTimeoutOrNull(3_000) { ScreenBrain.state.first { it.packageName == pkg && predicate(it) } }
-                    ?: throw PlanStopped()
+                    ?.also { current ->
+                        val before = ScreenBrain.key(previousScreen)
+                        val after = ScreenBrain.key(current)
+                        if (before != null && after != null) ScreenBrain.graph.verifiedTransition(before, after)
+                        previousScreen = current
+                    } ?: throw PlanStopped()
             fun composer() = SemanticTarget(resourceId = "$pkg:id/entry", editable = true)
             fun searchField() = SemanticTarget(editable = true)
             fun ScreenState.correctRecipient() = elements.any {

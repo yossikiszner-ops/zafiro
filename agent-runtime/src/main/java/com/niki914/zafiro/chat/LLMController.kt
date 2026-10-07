@@ -342,9 +342,27 @@ object LLMController {
      * 树 id == Room 会话 id：HomeChatState 拿它创建 Room 会话，
      * 之后 open(restore) 恢复时树 id 从快照 id 取（对齐）。
      */
-    suspend fun ensureSession(): String {
+    private fun knownLocalPlan(input: String) =
+        com.niki914.zafiro.chat.routing.DirectCommand.parse(input) != null ||
+            com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(input) != null
+
+    /** Offline commands share the same conversation tree without preparing Skills, MCP or a provider. */
+    private suspend fun refreshForLocal(): RuntimeState {
+        val settings = RuntimeEnvironment.awaitSettingsGateway().listBuiltinToolSettings()
+        val tools = toolManager.resolve(emptyList(), emptyList(), settings)
+        val config = runtimeState?.snapshot?.config ?: ResolvedLlmConfig(
+            endpoint = "https://local.invalid", apiKey = "", model = "local-action",
+            baseSystemPrompt = "", finalSystemPrompt = "", maxTokens = 1024)
+        val protocol = sessionProtocol ?: LlmProtocol.Default
+        val session = obtainSession(protocol, config)
+        return RuntimeState(LlmRuntimeSnapshot(config, tools,
+            com.niki914.zafiro.chat.agentic.PromptComposeResult("")), session, protocol, localOnly = true)
+            .also { runtimeState = it }
+    }
+
+    suspend fun ensureSession(firstUserInput: String? = null): String {
         if (okia == null) {
-            refresh()
+            if (firstUserInput != null && knownLocalPlan(firstUserInput)) refreshForLocal() else refresh()
         }
         return okia?.conversation?.value?.id
             ?: error("session not available")
@@ -395,14 +413,21 @@ object LLMController {
     ): Flow<LlmStreamEvent> = channelFlow {
         try {
             val state = try {
-                withTimeoutOrNull(20_000) { refresh() }
-                    ?: throw RuntimePreparationTimeout()
+                withTimeoutOrNull(20_000) {
+                    val local = if (images.isEmpty() && files.isEmpty() && knownLocalPlan(query)) refreshForLocal() else null
+                    val tools = local?.snapshot?.tools?.builtinTools.orEmpty()
+                    val enabled = local != null && (com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
+                        com.niki914.zafiro.chat.routing.DirectCommand.parse(query), tools) != null ||
+                        com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
+                            com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(query), tools) != null)
+                    if (!enabled) refresh() else local!!.snapshot
+                } ?: throw RuntimePreparationTimeout()
                 runtimeState
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) {
                     throw throwable
                 }
-                (if (throwable is RuntimePreparationTimeout) null else runtimeState) ?: run {
+                (if (throwable is RuntimePreparationTimeout || runtimeState?.localOnly == true) null else runtimeState) ?: run {
                     // 原文透传不造文案：异常 message 多为内部码（ConfigRequired）或
                     // 英文原文，翻译归直接消费方（UI toAssistantErrorUi / Service map）
                     val code = throwable.toUserErrorCode()
@@ -707,7 +732,7 @@ object LLMController {
     ): Okia {
         val endpoint = config.endpoint.ifBlank { protocolDefaultEndpointFallback(protocol) }
         val wireProtocol = wireProtocolFor(protocol)
-        val saver = ensureImageSaver()
+        val saver = if (config.endpoint == "https://local.invalid") null else ensureImageSaver()
         return Okia.open(wireProtocol, restore) {
             this.endpoint = endpoint
             apiKey = config.apiKey
@@ -1015,6 +1040,7 @@ object LLMController {
         val snapshot: LlmRuntimeSnapshot,
         val okia: Okia,
         val sessionProtocol: LlmProtocol?,
+        val localOnly: Boolean = false,
     )
 
     private class LlmConfigRequiredException : IllegalStateException("LLM config is required")

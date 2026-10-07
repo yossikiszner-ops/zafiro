@@ -7,6 +7,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.niki914.xposed.api.util.ContextProvider
 
 /** Coalesces accessibility events; no screenshots, polling, cloud calls or action authority. */
 object ScreenBrain {
@@ -17,6 +18,7 @@ object ScreenBrain {
     private var rootProvider: (() -> AccessibilityNodeInfo?)? = null
     private var pending = false
     private var revision = 0L
+    private val versions = LinkedHashMap<String, Pair<Long, Long>>()
     private val update = Runnable {
         pending = false
         val root = runCatching { rootProvider?.invoke() }.getOrNull()
@@ -28,17 +30,32 @@ object ScreenBrain {
         rootProvider = provider
         onUiEvent()
     }
-    fun disconnect() {
+    @Synchronized fun disconnect() {
         handler.removeCallbacks(update)
         pending = false
         rootProvider = null
         current.value = ScreenState.Empty
         graph.clear()
+        versions.clear()
     }
     fun onUiEvent() {
         if (rootProvider == null || pending) return
         pending = true
         handler.postDelayed(update, 80) // A fixed window, not starvation-prone trailing debounce.
+    }
+    @Synchronized fun key(screen: ScreenState): ScreenGraph.Key? {
+        val pkg = screen.packageName ?: return null
+        val now = android.os.SystemClock.elapsedRealtime()
+        val cached = versions[pkg]
+        val version = if (cached != null && now - cached.second < 60_000) cached.first else {
+            @Suppress("DEPRECATION")
+            val info = runCatching { ContextProvider.awaitIfAvailable()?.packageManager?.getPackageInfo(pkg, 0) }.getOrNull()
+            val value = if (android.os.Build.VERSION.SDK_INT >= 28) info?.longVersionCode else info?.versionCode?.toLong()
+            (value ?: return null).also { versions[pkg] = it to now }
+        }
+        while (versions.size > 64) versions.remove(versions.keys.first())
+        val structure = screen.elements.mapNotNull { node -> node.resourceId?.let { "$it:${node.role}:${node.editable}" } }.distinct().sorted().joinToString("|")
+        return ScreenGraph.Key(pkg, version, structure.hashCode().toString())
     }
     private fun snapshot(root: AccessibilityNodeInfo): ScreenState {
         val elements = ArrayList<ScreenElement>()
@@ -62,7 +79,9 @@ object ScreenBrain {
         }
         try {
             visit(root, "0", 0)
-            return ScreenState(root.packageName?.toString(), root.windowId, ++revision, elements)
+            return ScreenState(root.packageName?.toString(), root.windowId, ++revision, elements).also { screen ->
+                key(screen)?.let { graph.remember(it, screen) }
+            }
         } finally { @Suppress("DEPRECATION") root.recycle() }
     }
 }

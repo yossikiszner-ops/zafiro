@@ -316,7 +316,7 @@ object AgentImpl : Agent {
     /** 会话树 id 即 Room 会话 id（okia 惰性建实例，首轮发起时建档）。 */
     private suspend fun ensureConversation(firstUserInput: String): ConversationId {
         conversationFlow.value.id?.let { return it }
-        val sessionId = ConversationId(LLMController.ensureSession())
+        val sessionId = ConversationId(LLMController.ensureSession(firstUserInput))
         // 建档可能已经由对话页做过：`createConversation` 的 DAO 冲突策略是 ABORT，
         // 重复 insert 会抛异常并让整轮发不出去
         if (store().exists(sessionId)) {

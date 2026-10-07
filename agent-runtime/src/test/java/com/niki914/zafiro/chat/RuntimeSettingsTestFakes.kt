@@ -55,7 +55,12 @@ internal class FakeRuntimeSettingsGateway(
     var failListEnabledSkills: Throwable? = null
     var failLoadSkill: Throwable? = null
 
-    override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig = llmConfig
+    var readLlmConfigCount = 0
+    var listMcpServersCount = 0
+    override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig {
+        readLlmConfigCount++
+        return llmConfig
+    }
 
     override suspend fun listEnabledSkills(): List<RuntimeSkillMetadata> {
         listEnabledSkillsCallCount++
@@ -69,7 +74,10 @@ internal class FakeRuntimeSettingsGateway(
         return loadedSkills[id]
     }
 
-    override suspend fun listMcpServers(): List<RuntimeMcpServer> = mcpServers
+    override suspend fun listMcpServers(): List<RuntimeMcpServer> {
+        listMcpServersCount++
+        return mcpServers
+    }
 
     override suspend fun addMemory(value: String) {
         val normalized = value.trim()

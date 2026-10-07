@@ -45,6 +45,21 @@ import org.junit.Test
 
 class LLMControllerOkiaTest {
 
+    // Offline commands must not prepare a provider/MCP/Skills; cloud cannot reuse an offline sentinel after config failure.
+    @Test fun localSessionWorksWithoutCloudConfigurationAndFailsClosedForCloud() = runTest {
+        val gateway = installRuntimeSettingsGatewayForTest(FakeRuntimeSettingsGateway(llmConfig = RuntimeLlmConfig()))
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, config ->
+            assertEquals("https://local.invalid", config.endpoint)
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
+        }
+        assertTrue(LLMController.ensureSession("פתח וואטסאפ").isNotBlank())
+        assertEquals(0, gateway.readLlmConfigCount)
+        assertEquals(0, gateway.listMcpServersCount)
+        assertEquals(0, gateway.listEnabledSkillsCallCount)
+        val errors = LLMController.stream("Explain quantum mechanics").toList().filterIsInstance<LlmStreamEvent.Error>()
+        assertEquals(LlmErrorCode.ConfigRequired, errors.single().code)
+    }
+
     // Protects text chat from waiting forever when runtime/session preparation stalls.
     @Test
     fun stalledPreparationEmitsTimeoutInsteadOfRemainingBusy() = runTest {
