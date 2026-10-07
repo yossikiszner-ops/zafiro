@@ -1,4 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
   <string name="error_config_required">יש להגדיר תחילה מודל</string>
+    <string name="local_opening_app">פותח WhatsApp</string>
+    <string name="local_finding_contact">מחפש איש קשר</string>
+    <string name="local_opening_conversation">פותח את השיחה</string>
+    <string name="local_writing_message">כותב הודעה</string>
+    <string name="local_send_message">שליחת הודעה</string>
+    <string name="local_send_confirmation">נדרש אישור שלך לפני השליחה</string>
+    <string name="local_message_submitted">שדה ההודעה התרוקן לאחר השליחה. לא ניתן לאמת מסירה.</string>
+    <string name="local_message_cancelled">השליחה בוטלה. ייתכן שהטיוטה נשארה ב־WhatsApp.</string>
+    <string name="local_message_stopped">לא הצלחתי לאמת את השלב הבא ועצרתי. בדוק את WhatsApp לפני ניסיון נוסף.</string>
 </resources>

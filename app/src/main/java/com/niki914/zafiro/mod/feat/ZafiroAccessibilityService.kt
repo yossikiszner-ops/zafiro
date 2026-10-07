@@ -33,6 +33,8 @@ class ZafiroAccessibilityService : AccessibilityService(), IAccessibility {
             || type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             || type == AccessibilityEvent.TYPE_WINDOWS_CHANGED
             || type == AccessibilityEvent.TYPE_VIEW_SCROLLED
+            || type == AccessibilityEvent.TYPE_VIEW_FOCUSED
+            || type == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
             || type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
         ) {
             AccessibilityController.recordUiEvent()

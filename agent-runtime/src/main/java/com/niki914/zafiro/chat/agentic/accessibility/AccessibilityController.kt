@@ -158,16 +158,19 @@ object AccessibilityController {
 
     fun setService(service: IAccessibility) {
         serviceInstance = service
+        ScreenBrain.connect { service.windowRoot }
     }
 
     fun clearService() {
         serviceInstance = null
+        ScreenBrain.disconnect()
         nodeCache.clear()
     }
 
     /** Called from [ZafiroAccessibilityService.onAccessibilityEvent] on UI-significant events. */
     fun recordUiEvent() {
         lastUiEventTime = SystemClock.elapsedRealtime()
+        ScreenBrain.onUiEvent()
     }
 
     fun clearPointerOverlay() {
@@ -647,6 +650,25 @@ object AccessibilityController {
      * against [currentVersion], and performs the action via accessibility
      * with automatic shell fallback for non-SET_TEXT actions.
      */
+    /** Fresh semantic resolution feeds the existing token/cursor/permission executor. */
+    suspend fun executeSemanticTarget(target: SemanticTarget, action: NodeAction, text: String? = null): BuiltinToolResult {
+        try { refreshNodeCache() }
+        catch (cancel: CancellationException) { throw cancel }
+        catch (_: Exception) { return BuiltinToolResult.failure("SERVICE_UNAVAILABLE", "Screen unavailable") }
+        val matches = nodeCache.entries.filter { (_, node) ->
+            node.isVisibleToUser && node.isEnabled && !node.isPassword &&
+                (target.editable == null || node.isEditable == target.editable) &&
+                (target.clickable == null || node.isClickable == target.clickable) &&
+                (target.resourceId == null || node.viewIdResourceName == target.resourceId) &&
+                (target.labels.isEmpty() || target.labels.any {
+                    it.equals(node.text?.toString()?.trim(), true) || it.equals(node.contentDescription?.toString()?.trim(), true)
+                })
+        }
+        val index = matches.singleOrNull()?.key
+            ?: return BuiltinToolResult.failure("TARGET_AMBIGUOUS_OR_MISSING", "No unique semantic target")
+        return executeNodeAction("${currentVersion}_${index}", action, text)
+    }
+
     suspend fun executeNodeAction(
         token: String,
         action: NodeAction,

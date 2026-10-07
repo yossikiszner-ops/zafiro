@@ -491,6 +491,8 @@ object LLMController {
                             localAction = if (images.isEmpty() && files.isEmpty())
                                 com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
                                     com.niki914.zafiro.chat.routing.DirectCommand.parse(query), state.snapshot.tools.builtinTools)
+                                    ?: com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
+                                        com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(query), state.snapshot.tools.builtinTools)
                             else null),
                     ) { event ->
                         val mapped = LlmStreamEventMapper.map(event, startedAtMs)

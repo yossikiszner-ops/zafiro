@@ -50,7 +50,8 @@ internal class LiveSpeechInput(
                     error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) onUnavailable()
             }
         })
-        val language = context.resources.configuration.locales[0].toLanguageTag()
+        val language = (androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()[0]
+            ?: context.resources.configuration.locales[0]).toLanguageTag()
         owned.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
