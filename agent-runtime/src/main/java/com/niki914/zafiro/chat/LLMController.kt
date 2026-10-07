@@ -477,6 +477,29 @@ object LLMController {
                 } else {
                     query
                 }
+                val routeStarted = android.os.SystemClock.elapsedRealtime()
+                val eligibleLocal = images.isEmpty() && files.isEmpty()
+                var localAction = if (eligibleLocal) {
+                    com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
+                        com.niki914.zafiro.chat.routing.DirectCommand.parse(query), state.snapshot.tools.builtinTools)
+                        ?: com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
+                            com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(query), state.snapshot.tools.builtinTools)
+                } else null
+                var routeName = if (localAction != null) "DETERMINISTIC" else "GEMINI"
+                if (eligibleLocal && localAction == null) {
+                    val suggestion = com.niki914.zafiro.chat.routing.LocalIntelligence.suggest(query)
+                    if (suggestion != null) {
+                        localAction = com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
+                            com.niki914.zafiro.chat.routing.DirectCommand.parse(suggestion), state.snapshot.tools.builtinTools)
+                            ?: com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
+                                com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(suggestion), state.snapshot.tools.builtinTools)
+                        if (localAction != null) routeName = "LOCAL_MODEL"
+                    }
+                }
+                com.niki914.zafiro.chat.routing.LocalIntelligence.diagnostics.value =
+                    com.niki914.zafiro.chat.routing.RouteDiagnostics(routeName,
+                        android.os.SystemClock.elapsedRealtime() - routeStarted,
+                        if (localAction == null) "No confident supported local plan" else null)
                 // 终态以返回值承载（TurnResult）；onEvent 只承担流式中间过程。
                 val result = try {
                     state.okia.send(
@@ -488,12 +511,7 @@ object LLMController {
                                 com.niki914.zafiro.chat.routing.RequestBudget.Balanced -> 16
                                 com.niki914.zafiro.chat.routing.RequestBudget.Quality -> 32
                             }),
-                            localAction = if (images.isEmpty() && files.isEmpty())
-                                com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
-                                    com.niki914.zafiro.chat.routing.DirectCommand.parse(query), state.snapshot.tools.builtinTools)
-                                    ?: com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
-                                        com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(query), state.snapshot.tools.builtinTools)
-                            else null),
+                            localAction = localAction),
                     ) { event ->
                         val mapped = LlmStreamEventMapper.map(event, startedAtMs)
                         mapped?.let {

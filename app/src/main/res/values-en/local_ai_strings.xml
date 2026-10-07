@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_ai_title">Local AI</string>
+    <string name="local_ai_optional">Optional command models. No model is enabled automatically. Speed, RAM and Hebrew accuracy require a device benchmark. Downloads continue while this screen is closed; leaving the app may pause them.</string>
+    <string name="local_ai_candidate_info">%1$d MiB · INT4 · command/planner candidate. Device performance not measured.</string>
+    <string name="local_ai_installed">Installed and integrity verified</string>
+    <string name="local_ai_paused">Paused; partial download retained</string>
+    <string name="local_ai_storage">Not enough storage for this download</string>
+    <string name="local_ai_integrity">Integrity check failed. The model was discarded.</string>
+    <string name="local_ai_download_error">Download interrupted. You can resume.</string>
+    <string name="local_ai_pause">Pause</string>
+    <string name="local_ai_resume">Resume</string>
+    <string name="local_ai_reinstall">Reinstall</string>
+    <string name="local_ai_download">Download</string>
+    <string name="local_ai_delete">Delete / cancel</string>
+    <string name="local_ai_close">Close</string>
+    <string name="local_ai_fast">Fast local</string>
+    <string name="local_ai_balanced">Balanced</string>
+    <string name="local_ai_cloud">Cloud quality</string>
+    <string name="local_ai_diagnostics">Diagnostics: %1$s · routing %2$d ms</string>
+    <string name="local_ai_benchmark">Run device benchmark / warm model</string>
+    <string name="local_ai_benchmark_running">Loading and testing sample commands…</string>
+    <string name="local_ai_benchmark_failed">Benchmark unavailable. Check available RAM, model integrity and device support.</string>
+    <string name="local_ai_benchmark_result">Load: %1$d ms; average inference: %2$d ms; first output: %3$d ms; native heap: %4$d MiB; command samples: %5$d/%6$d. Not a phone-task success benchmark.</string>
+    <string name="local_ai_wifi">Download on Wi-Fi only</string>
+    <string name="local_ai_wifi_required">Connect to Wi-Fi or disable the Wi-Fi-only preference.</string>
+</resources>

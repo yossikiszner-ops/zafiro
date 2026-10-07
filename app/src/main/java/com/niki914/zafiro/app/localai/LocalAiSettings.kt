@@ -1,0 +1,69 @@
+package com.niki914.zafiro.app.localai
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.niki914.zafiro.app.R
+import com.niki914.zafiro.chat.routing.ModelArtifact
+import com.niki914.zafiro.chat.routing.IntelligenceMode
+import com.niki914.zafiro.chat.routing.LocalIntelligence
+
+@Composable
+fun LocalAiSettings(onDismiss: () -> Unit) {
+    val model: LocalAiViewModel = viewModel()
+    val state by model.state.collectAsState()
+    val wifiOnly by model.wifiOnly.collectAsState()
+    val mode by LocalIntelligence.mode.collectAsState()
+    val diagnostics by LocalIntelligence.diagnostics.collectAsState()
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.local_ai_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.local_ai_optional))
+                Row {
+                    Text(stringResource(R.string.local_ai_wifi), Modifier.weight(1f))
+                    Switch(wifiOnly, model::setWifiOnly)
+                }
+                IntelligenceMode.entries.forEach { option ->
+                    Row {
+                        RadioButton(selected = mode == option, onClick = { model.setMode(option) })
+                        TextButton(onClick = { model.setMode(option) }) { Text(stringResource(when(option) {
+                            IntelligenceMode.FastLocal -> R.string.local_ai_fast
+                            IntelligenceMode.Balanced -> R.string.local_ai_balanced
+                            IntelligenceMode.CloudQuality -> R.string.local_ai_cloud
+                        })) }
+                    }
+                }
+                Text(stringResource(R.string.local_ai_diagnostics, diagnostics.route, diagnostics.routingMs))
+                ModelArtifact.candidates.forEach { artifact ->
+                    val download = state.getValue(artifact.id)
+                    Text(artifact.name, style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.local_ai_candidate_info, artifact.bytes / (1024 * 1024)))
+                    download.status?.let { Text(stringResource(it)) }
+                    download.benchmark?.let { result -> Text(stringResource(R.string.local_ai_benchmark_result,
+                        result.loadMs, result.warmMs, result.firstOutputMs, result.nativeHeapMiB, result.correct, result.total)) }
+                    if (download.downloading) LinearProgressIndicator(
+                        progress = { (download.completed.toFloat() / artifact.bytes).coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth())
+                    Row {
+                        TextButton(onClick = { if (download.downloading) model.pause(artifact) else model.download(artifact) }) {
+                            Text(stringResource(if (download.downloading) R.string.local_ai_pause
+                                else if (download.completed > 0 && !download.installed) R.string.local_ai_resume
+                                else if (download.installed) R.string.local_ai_reinstall else R.string.local_ai_download))
+                        }
+                        if (download.installed || download.completed > 0) TextButton(onClick = { model.delete(artifact) }) {
+                            Text(stringResource(R.string.local_ai_delete))
+                        }
+                    }
+                    if (download.installed && !download.downloading) TextButton(onClick = { model.benchmark(artifact) }) {
+                        Text(stringResource(R.string.local_ai_benchmark))
+                    }
+                }
+            }
+        }, confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.local_ai_close)) } })
+}

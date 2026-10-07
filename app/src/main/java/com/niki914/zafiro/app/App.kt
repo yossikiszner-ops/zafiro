@@ -31,6 +31,12 @@ class App : Application() {
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN)
+            com.niki914.zafiro.app.localai.LocalCommandRuntime.unload()
+    }
+
     override fun onCreate() {
         super.onCreate()
         // 日志 debug 门控：release 构建 DEBUG/VERBOSE 全停，仅 INFO+ 输出
@@ -39,6 +45,10 @@ class App : Application() {
         //（否则 ContextProvider 从未 provide，PyRuntime.warmUp 会永远挂起）
         if (!isMainProcess()) return
         ContextProvider.provide(applicationContext)
+        com.niki914.zafiro.app.localai.LocalCommandRuntime.install()
+        com.niki914.zafiro.chat.routing.LocalIntelligence.mode.value = runCatching {
+            com.niki914.zafiro.chat.routing.IntelligenceMode.valueOf(getSharedPreferences("local-ai", MODE_PRIVATE).getString("mode", "Balanced") ?: "Balanced")
+        }.getOrDefault(com.niki914.zafiro.chat.routing.IntelligenceMode.Balanced)
         com.niki914.zafiro.app.voice.GlassPreferences.load(applicationContext)
         com.niki914.zafiro.chat.routing.NetworkPolicy.enabled.value = getSharedPreferences("zafiro_voice", MODE_PRIVATE).getBoolean("network_lock", true)
         com.niki914.zafiro.chat.routing.RequestRouting.budget.value = runCatching {

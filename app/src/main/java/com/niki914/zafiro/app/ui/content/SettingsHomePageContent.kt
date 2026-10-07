@@ -45,6 +45,8 @@ private fun SettingsHomePageContentBody(
     uiState: SettingsUiState,
     onOpenGroup: (ZafiroSettingsGroup) -> Unit,
 ) {
+    var showLocalAi by remember { mutableStateOf(false) }
+    if (showLocalAi) com.niki914.zafiro.app.localai.LocalAiSettings { showLocalAi = false }
     var showVoice by remember { mutableStateOf(false) }
     if (showVoice) com.niki914.zafiro.app.voice.HomeVoiceControls({}, {}, settingsOnly = true, onSettingsDismiss = { showVoice = false })
     var showUpdate by remember { mutableStateOf(false) }
@@ -62,6 +64,7 @@ private fun SettingsHomePageContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> when (action.id) {
+                    "zafiro-local-ai" -> showLocalAi = true
                     "zafiro-voice" -> showVoice = true
                     "zafiro-glass" -> showGlass = true
                     "zafiro-cursor" -> showCursor = true
@@ -84,6 +87,7 @@ private fun settingsHomePageSpec(
             title = "Zafiro",
             layout = SettingsSectionLayout.GroupedCard,
             rows = listOf(
+                SettingsRowSpec.Navigation(id = "zafiro-local-ai", title = stringResource(R.string.local_ai_title)),
                 SettingsRowSpec.Navigation(id = "zafiro-voice", title = stringResource(R.string.voice_settings)),
                 SettingsRowSpec.Navigation(id = "zafiro-glass", title = stringResource(R.string.glass_studio)),
                 SettingsRowSpec.Navigation(id = "zafiro-cursor", title = stringResource(R.string.cursor_settings)),

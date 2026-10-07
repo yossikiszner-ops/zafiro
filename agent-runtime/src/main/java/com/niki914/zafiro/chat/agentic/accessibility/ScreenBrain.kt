@@ -21,7 +21,7 @@ object ScreenBrain {
         pending = false
         val root = runCatching { rootProvider?.invoke() }.getOrNull()
         if (root == null) current.value = ScreenState.Empty
-        else runCatching { snapshot(root) }.onSuccess { current.value = it }
+        else runCatching { snapshot(root) }.onSuccess { current.value = it }.onFailure { current.value = ScreenState.Empty }
     }
 
     fun connect(provider: () -> AccessibilityNodeInfo?) {

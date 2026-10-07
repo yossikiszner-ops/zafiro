@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_ai_title">בינה מקומית</string>
+    <string name="local_ai_optional">מודלי פקודות לבחירה. אין הפעלה אוטומטית. מהירות, זיכרון ודיוק בעברית דורשים בדיקה במכשיר. ההורדות ממשיכות לאחר סגירת המסך; יציאה מהאפליקציה עשויה להשהות אותן.</string>
+    <string name="local_ai_candidate_info">%1$d MiB · INT4 · מועמד לפקודות ותכנון. ביצועים במכשיר טרם נמדדו.</string>
+    <string name="local_ai_installed">הותקן ואומת</string>
+    <string name="local_ai_paused">מושהה; ההורדה החלקית נשמרה</string>
+    <string name="local_ai_storage">אין מספיק מקום להורדה</string>
+    <string name="local_ai_integrity">אימות הקובץ נכשל. המודל נמחק.</string>
+    <string name="local_ai_download_error">ההורדה נקטעה. אפשר לחדש אותה.</string>
+    <string name="local_ai_pause">השהה</string>
+    <string name="local_ai_resume">המשך</string>
+    <string name="local_ai_reinstall">התקן מחדש</string>
+    <string name="local_ai_download">הורד</string>
+    <string name="local_ai_delete">מחק / בטל</string>
+    <string name="local_ai_close">סגור</string>
+    <string name="local_ai_fast">מקומי מהיר</string>
+    <string name="local_ai_balanced">מאוזן</string>
+    <string name="local_ai_cloud">איכות בענן</string>
+    <string name="local_ai_diagnostics">אבחון: %1$s · ניתוב %2$d מילישניות</string>
+    <string name="local_ai_benchmark">בדיקת ביצועים במכשיר / טעינת מודל</string>
+    <string name="local_ai_benchmark_running">טוען ובודק פקודות לדוגמה…</string>
+    <string name="local_ai_benchmark_failed">הבדיקה אינה זמינה. בדוק זיכרון פנוי, תקינות מודל ותמיכה במכשיר.</string>
+    <string name="local_ai_benchmark_result">טעינה: %1$d מילישניות; הסקה ממוצעת: %2$d מילישניות; פלט ראשון: %3$d מילישניות; זיכרון ילידי: %4$d MiB; דוגמאות פקודות: %5$d/%6$d. זו אינה בדיקת הצלחה של פעולות בטלפון.</string>
+    <string name="local_ai_wifi">הורדה ברשת Wi-Fi בלבד</string>
+    <string name="local_ai_wifi_required">התחבר לרשת Wi-Fi או שנה את העדפת ההורדה.</string>
+</resources>

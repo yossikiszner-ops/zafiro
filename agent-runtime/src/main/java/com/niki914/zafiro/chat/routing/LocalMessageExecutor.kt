@@ -45,6 +45,9 @@ internal object LocalMessageExecutor {
                     ?: throw PlanStopped()
             fun composer() = SemanticTarget(resourceId = "$pkg:id/entry", editable = true)
             fun searchField() = SemanticTarget(editable = true)
+            fun ScreenState.correctRecipient() = elements.any {
+                it.resourceId == "$pkg:id/conversation_contact_name" && it.text == plan.recipient
+            }
             var sent = false
             var cancelled = false
             try {
@@ -65,7 +68,7 @@ internal object LocalMessageExecutor {
                 run(R.string.local_opening_conversation) {
                     AccessibilityController.executeSemanticTarget(recipient, NodeAction.CLICK)
                 }
-                awaitScreen { it.resolve(composer()) != null && it.elements.any { n -> n.text == plan.recipient } }
+                awaitScreen { it.resolve(composer())?.text?.isEmpty() == true && it.correctRecipient() }
                 run(R.string.local_writing_message) {
                     AccessibilityController.executeSemanticTarget(composer(), NodeAction.SET_TEXT, plan.content)
                 }
@@ -75,7 +78,7 @@ internal object LocalMessageExecutor {
                     context.getString(R.string.local_send_confirmation)))
                 if (decision != ApprovalDecision.Allow) { cancelled = true; throw PlanStopped() }
                 // Permission UI may change the foreground window. Recheck the real conversation after it closes.
-                awaitScreen { it.resolve(composer())?.text == plan.content && it.elements.any { n -> n.text == plan.recipient } }
+                awaitScreen { it.resolve(composer())?.text == plan.content && it.correctRecipient() }
                 run(R.string.local_send_message) {
                     AccessibilityController.executeSemanticTarget(
                         SemanticTarget(resourceId = "$pkg:id/send", clickable = true), NodeAction.CLICK)
