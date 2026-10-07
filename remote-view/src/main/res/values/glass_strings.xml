@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="glass_state_dormant">Zafiro</string>
+    <string name="glass_state_wake">Ready</string>
+    <string name="glass_state_listening">Listening…</string>
+    <string name="glass_state_understanding">Understanding…</string>
+    <string name="glass_state_searching">Searching…</string>
+    <string name="glass_state_reading">Reading…</string>
+    <string name="glass_state_thinking">Thinking…</string>
+    <string name="glass_state_tool">Working…</string>
+    <string name="glass_state_writing">Writing…</string>
+    <string name="glass_state_confirm">Please confirm</string>
+    <string name="glass_state_sending">Sending…</string>
+    <string name="glass_state_speaking">Speaking…</string>
+    <string name="glass_state_success">Done</string>
+    <string name="glass_state_permission">Waiting for permission…</string>
+    <string name="glass_state_recover">Recovering…</string>
+    <string name="glass_state_error">Something went wrong</string>
+    <string name="glass_state_interrupted">Interrupted</string>
+</resources>

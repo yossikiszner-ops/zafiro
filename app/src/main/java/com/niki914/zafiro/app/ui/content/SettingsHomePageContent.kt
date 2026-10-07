@@ -4,6 +4,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.voice.GlassAppearanceSettings
+import com.niki914.zafiro.app.overlay.AgentCursorSettings
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -39,6 +45,12 @@ private fun SettingsHomePageContentBody(
     uiState: SettingsUiState,
     onOpenGroup: (ZafiroSettingsGroup) -> Unit,
 ) {
+    var showUpdate by remember { mutableStateOf(false) }
+    if (showUpdate) AppUpdateSettings { showUpdate = false }
+    var showCursor by remember { mutableStateOf(false) }
+    if (showCursor) AgentCursorSettings { showCursor = false }
+    var showGlass by remember { mutableStateOf(false) }
+    if (showGlass) GlassAppearanceSettings { showGlass = false }
     val groupsById = uiState.sections
         .flatMap { it.groups }
         .associateBy { it.name }
@@ -47,7 +59,12 @@ private fun SettingsHomePageContentBody(
         spec = settingsHomePageSpec(uiState),
         onAction = { action ->
             when (action) {
-                is SettingsRowAction.Navigate -> groupsById[action.id]?.let(onOpenGroup)
+                is SettingsRowAction.Navigate -> when (action.id) {
+                    "zafiro-glass" -> showGlass = true
+                    "zafiro-cursor" -> showCursor = true
+                    "zafiro-update" -> showUpdate = true
+                    else -> groupsById[action.id]?.let(onOpenGroup)
+                }
                 is SettingsRowAction.Click -> Unit
                 is SettingsRowAction.ToggleChanged -> Unit
             }
@@ -60,7 +77,15 @@ private fun settingsHomePageSpec(
     uiState: SettingsUiState,
 ): SettingsPageSpec {
     return SettingsPageSpec(
-        sections = uiState.sections.map { section ->
+        sections = listOf(SettingsSectionSpec(
+            title = "Zafiro",
+            layout = SettingsSectionLayout.GroupedCard,
+            rows = listOf(
+                SettingsRowSpec.Navigation(id = "zafiro-glass", title = stringResource(R.string.glass_studio)),
+                SettingsRowSpec.Navigation(id = "zafiro-cursor", title = stringResource(R.string.cursor_settings)),
+                SettingsRowSpec.Navigation(id = "zafiro-update", title = stringResource(R.string.app_update_title)),
+            ),
+        )) + uiState.sections.map { section ->
             SettingsSectionSpec(
                 title = stringResource(section.titleRes),
                 layout = SettingsSectionLayout.GroupedCard,

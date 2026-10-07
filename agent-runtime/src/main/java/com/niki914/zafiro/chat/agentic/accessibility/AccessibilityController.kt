@@ -83,6 +83,7 @@ object AccessibilityController {
     @Volatile
     var pointerOverlay: IPointerOverlay? = null
 
+    val observedPackage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private var pointerShown = false
     private var cachedScreenWidth: Int = 0
     private var cachedScreenHeight: Int = 0
@@ -96,6 +97,7 @@ object AccessibilityController {
 
     /** Reset pointer state and hide overlay at end of an agent turn. */
     fun onTurnEnd() {
+        observedPackage.value = null
         pointerShown = false
         pointerOverlay?.hide()
     }
@@ -424,6 +426,7 @@ object AccessibilityController {
         cachedScreenWidth = dm.widthPixels
         cachedScreenHeight = dm.heightPixels
         val appPkg = root.packageName?.toString() ?: "unknown"
+        observedPackage.value = appPkg.takeUnless { it == "unknown" }
 
         rebuildCache(root)
 
@@ -608,9 +611,9 @@ object AccessibilityController {
         // Fly pointer to node centre before acting
         val nodeRect = AndroidRect()
         node.getBoundsInScreen(nodeRect)
-        pointerOverlay?.animateTo(nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat())
-
-        return executeAccessibilityAction(node, st.index, action, text)
+        return PointerActionCoordinator.execute(pointerOverlay, nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat()) {
+            executeAccessibilityAction(node, st.index, action, text)
+        }
     }
 
     private suspend fun executeShellAction(
@@ -758,13 +761,14 @@ object AccessibilityController {
             )
         }
 
-        // Fly pointer along the swipe path before executing
-        pointerOverlay?.showSwipe(startX, startY, endX, endY, duration)
+        pointerOverlay?.animateTo(startX, startY)
 
         val success =
             serviceInstance?.dispatchGesture(startX, startY, endX, endY, duration) ?: false
         return if (success) {
-            BuiltinToolResult.success("gesture performed via accessibility")
+            pointerOverlay?.showSwipe(startX, startY, endX, endY, duration)
+            pointerOverlay?.actionAccepted()
+            BuiltinToolResult.success("gesture accepted by accessibility; verify its effect from the resulting screen tree")
         } else {
             BuiltinToolResult.failure("GESTURE_FAILED", "gesture failed via accessibility")
         }
@@ -779,6 +783,7 @@ object AccessibilityController {
                 "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
             )
         }
+        pointerOverlay?.animateTo(x.toFloat(), y.toFloat())
         val result = runShellCommand("input tap $x $y")
         if (!result.shellAvailable) {
             return BuiltinToolResult.failure(
@@ -791,6 +796,7 @@ object AccessibilityController {
                 "Shell tap at ($x, $y) failed: ${result.stderr}",
             )
         }
+        pointerOverlay?.actionAccepted()
         return BuiltinToolResult.success("shell tap at ($x, $y)")
     }
 
@@ -803,6 +809,7 @@ object AccessibilityController {
                 "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
             )
         }
+        pointerOverlay?.animateTo(x.toFloat(), y.toFloat())
         val result = runShellCommand("input swipe $x $y $x $y 1500")
         if (!result.shellAvailable) {
             return BuiltinToolResult.failure(
@@ -815,6 +822,7 @@ object AccessibilityController {
                 "Shell long click at ($x, $y) failed: ${result.stderr}",
             )
         }
+        pointerOverlay?.actionAccepted()
         return BuiltinToolResult.success("shell long click at ($x, $y)")
     }
 

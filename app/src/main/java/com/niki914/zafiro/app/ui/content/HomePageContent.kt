@@ -404,20 +404,21 @@ fun HomePageContent(
         },
     )
 
+    var showUpdateInstaller by remember { mutableStateOf(false) }
+    if (showUpdateInstaller) AppUpdateSettings { showUpdateInstaller = false; UpdateCheckHolder.dismiss() }
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
     val uriHandler = LocalUriHandler.current
     val remoteVersion = updateCheckResult?.remoteVersion.orEmpty()
     val releaseUrl = updateCheckResult?.releaseUrl.orEmpty()
     ConfirmationLiquidDialog(
-        visible = updateCheckResult?.hasUpdate == true,
+        visible = updateCheckResult?.hasUpdate == true && !showUpdateInstaller,
         onDismissRequest = { UpdateCheckHolder.dismiss() },
         title = stringResource(R.string.update_dialog_title),
         text = stringResource(R.string.update_dialog_text, remoteVersion),
         positiveButtonText = stringResource(R.string.update_dialog_confirm),
         negativeButtonText = stringResource(R.string.update_dialog_cancel),
         onPositiveClick = {
-            uriHandler.openUri(releaseUrl)
-            UpdateCheckHolder.dismiss()
+            showUpdateInstaller = true
         },
         onNegativeClick = { UpdateCheckHolder.dismiss() },
         dismissOnBackgroundTap = false,
@@ -746,6 +747,14 @@ private fun HomePageContentBody(
                     .padding(bottom = composerBottomPadding + composerHeight.value + 8.dp),
             )
         }
+
+        com.niki914.zafiro.app.voice.HomeVoiceControls(
+            onInputChange = onInputChange,
+            onSend = onSendClick,
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .padding(bottom = composerBottomPadding + composerHeight.value + 8.dp + if (pendingImages.isNotEmpty() || pendingFiles.isNotEmpty()) 68.dp else 0.dp)
+                .padding(horizontal = 20.dp),
+        )
 
         LiquidChatComposer(
             value = uiState.input,

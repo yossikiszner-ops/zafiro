@@ -23,8 +23,8 @@ android {
         applicationId = "com.niki914.zafiro"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.5.0"
-        versionCode = 11
+        versionName = "1.5.2"
+        versionCode = 13
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -77,6 +77,7 @@ android {
 }
 
 dependencies {
+    implementation("com.github.gkonovalov.android-vad:webrtc:2.0.10")
     implementation(project(":agent-runtime"))
     implementation(project(":business:permission"))
     implementation(project(":business:files"))

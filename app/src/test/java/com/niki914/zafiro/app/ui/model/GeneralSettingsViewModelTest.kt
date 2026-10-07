@@ -67,7 +67,7 @@ class GeneralSettingsViewModelTest {
 
     @Test
     fun load_populatesSettingsFromRepo() = runTest {
-        XRepo.setLanguageTag("zh-CN")
+        XRepo.setLanguageTag("he")
         XRepo.setLoadLastConversationOnStartup(true)
         XRepo.setAlwaysShowMessageActions(false)
         XRepo.setLlmIdleTimeoutSeconds(90L)
@@ -81,7 +81,7 @@ class GeneralSettingsViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiStateFlow.value
-        assertEquals("zh-CN", state.languageTag)
+        assertEquals("he", state.languageTag)
         assertTrue(state.loadLastConversation)
         assertFalse(state.alwaysShowMessageActions)
         assertEquals(90L, state.idleTimeoutSeconds)

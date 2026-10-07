@@ -5,6 +5,7 @@ enum class Permission {
     ROOT,
     SHIZUKU,
     NOTIFICATION,
+    MICROPHONE,
     OVERLAY,
     ACCESSIBILITY,
 

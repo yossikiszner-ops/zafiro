@@ -476,4 +476,22 @@
     <string name="agent_resident_action_stop">Stop</string>
     <string name="agent_resident_action_approve">Allow</string>
     <string name="agent_resident_action_decline">Deny</string>
+    <string name="provider_quota_title">API quota unavailable</string>
+    <string name="provider_quota_body">Google rejected this request for the selected project and model. Verify that the active configuration uses the intended API key and project, and check its model quota in Google AI Studio.</string>
+    <string name="provider_auth_body">Check or replace the API key in AI provider settings.</string>
+    <string name="provider_rate_title">Too many requests</string>
+    <string name="app_update_title">Application updates</string>
+    <string name="app_update_check">Check for update</string>
+    <string name="app_update_download">Download update</string>
+    <string name="app_update_install">Install / allow installation</string>
+    <string name="app_update_hint">Updates come from the Zafiro repository. Android asks before installing.</string>
+    <string name="app_update_busy">Checking or downloading…</string>
+    <string name="app_update_failed">Unable to prepare the update. Check the network. The APK must match this application and its signing certificate.</string>
+    <string name="app_update_ready">Update verified. If Android requests permission, allow installation, return here and press Install again.</string>
+    <string name="app_update_available">An update is available for download.</string>
+    <string name="app_update_no_release">No newer downloadable release was found.</string>
+    <string name="voice_active_configuration">Active AI configuration: %1$s</string>
+    <string name="voice_test_audio">Test voice without microphone</string>
+    <string name="voice_stop_audio">Stop speech</string>
+    <string name="voice_test_sample">Hello. This is a Zafiro voice test.</string>
 </resources>
