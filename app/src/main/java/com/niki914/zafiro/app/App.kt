@@ -33,7 +33,7 @@ class App : Application() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)
             com.niki914.zafiro.app.localai.LocalCommandRuntime.unload()
     }
 

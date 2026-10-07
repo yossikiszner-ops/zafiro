@@ -92,12 +92,12 @@ object LocalCommandRuntime {
             }
         }
     }
-    private suspend fun interpret(input: String): LocalInterpretation? {
-        if (!mutex.tryLock()) return null // Never queue behind a load/benchmark.
-        return try {
-            val active = engine ?: return null
-            if (reliability < 0.98) return null
-            val output = withTimeoutOrNull(1500) { infer(active, input) }?.command ?: return null
+    private suspend fun interpret(input: String): LocalInterpretation? = withContext(Dispatchers.IO) {
+        if (!mutex.tryLock()) return@withContext null // Never queue behind a load/benchmark.
+        try {
+            val active = engine ?: return@withContext null
+            if (reliability < 0.98) return@withContext null
+            val output = withTimeoutOrNull(1500) { infer(active, input) }?.command ?: return@withContext null
             scheduleUnload()
             if (output == "GEMINI") null else LocalInterpretation(output, reliability)
         } finally { mutex.unlock() }

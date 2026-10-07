@@ -104,8 +104,8 @@ internal object DirectCommandExecutor {
         "כרום" -> "Chrome"
         "ספוטיפיי" -> "Spotify"
         "יוטיוב" -> "YouTube"
-        "מצלמה" -> "Camera"
-        "הגדרות" -> "Settings"
+        "מצלמה", "המצלמה" -> "Camera"
+        "הגדרות", "ההגדרות" -> "Settings"
         else -> name
     }
 }
