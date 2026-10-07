@@ -50,6 +50,25 @@ internal object AppUpdateInstaller {
             target
         } finally { temporary.delete() }
     }
+    suspend fun importVerified(context: Context, uri: Uri): File = withContext(Dispatchers.IO) {
+        val directory = File(context.cacheDir, "updates").apply { mkdirs() }
+        val temporary = File.createTempFile("import-", ".apk", directory)
+        try {
+            checkNotNull(context.contentResolver.openInputStream(uri)).use { input ->
+                temporary.outputStream().use { output ->
+                    val buffer = ByteArray(32768); var total = 0L
+                    while (true) {
+                        coroutineContext.ensureActive()
+                        val count = input.read(buffer); if (count < 0) break
+                        total += count; check(total <= 200L * 1024 * 1024)
+                        output.write(buffer, 0, count)
+                    }
+                }
+            }
+            check(verified(context, temporary)) { "Incompatible update package" }
+            temporary
+        } catch (error: Throwable) { temporary.delete(); throw error }
+    }
     @Suppress("DEPRECATION")
     private fun verified(context: Context, file: File): Boolean {
         val pm = context.packageManager

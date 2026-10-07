@@ -566,4 +566,20 @@
     <string name="ui_onboard_preferences_action_grant_all">Grant all</string>
     <string name="ui_onboard_preferences_action_skip">Skip</string>
     <string name="ui_onboard_preferences_toast_denied">Permission not granted</string>
+    <string name="cursor_style_optical">Optical focus</string>
+    <string name="cursor_style_arrow">Modern mouse pointer</string>
+    <string name="cursor_style_halo">Double halo</string>
+    <string name="cursor_style_crosshair">Crosshair</string>
+    <string name="cursor_style_diamond">Prism diamond</string>
+    <string name="cursor_style_aperture">Aperture</string>
+    <string name="cursor_style_comet">Comet</string>
+    <string name="cursor_style_orbit">Orbit</string>
+    <string name="cursor_style_brackets">Focus brackets</string>
+    <string name="cursor_style_dot">Minimal dot</string>
+    <string name="voice_wake_enable">Enable Jarvis on-device wake session</string>
+    <string name="voice_wake_scope">Requires Android on-device English recognition. Stops after 30 minutes; no cloud wake detection. Hold the microphone to open voice settings.</string>
+    <string name="voice_background_active">Voice session active. Tap Stop to release the microphone.</string>
+    <string name="voice_background_stop">Stop background listening</string>
+    <string name="app_update_import">Choose a downloaded APK update</string>
+    <string name="voice_action_checking">Checking the next action.</string>
 </resources>

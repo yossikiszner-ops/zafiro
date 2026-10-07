@@ -1,6 +1,8 @@
 package com.niki914.zafiro.app.voice
 
 import android.content.Context
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,79 +31,32 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Unit, modifier: Modifier = Modifier) {
+internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Unit, modifier: Modifier = Modifier, settingsOnly: Boolean = false, onSettingsDismiss: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val provider = remember { GeminiVoiceProvider() }
     val prefs = remember { context.getSharedPreferences("zafiro_voice", Context.MODE_PRIVATE) }
-    val input by rememberUpdatedState(onInputChange); val send by rememberUpdatedState(onSend)
-    val agent = remember { requireService<Agent>() }
-    var ownsResponse by remember { mutableStateOf(false) }
-    var sendFailed by remember { mutableStateOf(false) }
-    val session = remember {
-        VoiceSession(context.applicationContext, scope, provider, provider) { transcript ->
-            scope.launch {
-                try {
-                    if (agent.status.value.isRunning) { agent.stop(); withTimeout(10000) { agent.status.first { !it.isRunning } } }
-                    ownsResponse = true
-                    input(transcript); send()
-                } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                catch (_: Exception) { ownsResponse = false; sendFailed = true }
-            }
-        }.apply {
-            voice = prefs.getString("voice", "Charon") ?: "Charon"
-            style = prefs.getString("style", "Calm, precise, serious. Natural pace.") ?: ""
-            model = prefs.getString("model", "") ?: ""
-            speed = prefs.getFloat("speed", 1f)
-            autoSpeak = prefs.getBoolean("auto_speak", true)
-        }
-    }
-    LaunchedEffect(sendFailed) {
-        if (sendFailed) { session.agentFailed(); sendFailed = false }
-    }
+    val session = remember { VoiceController.initialize(context.applicationContext); VoiceController.session }
     val status by session.status.collectAsState()
     val owner = LocalLifecycleOwner.current
-    DisposableEffect(owner, session) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) { ownsResponse = false; session.stop() }
-        }
-        owner.lifecycle.addObserver(observer)
-        onDispose { owner.lifecycle.removeObserver(observer); session.stop() }
-    }
-    LaunchedEffect(agent, session) {
-        var running = false
-        agent.status.collect { state ->
-            if (state.isRunning) running = true
-            if (state is AgentState.Idle && running) {
-                running = false
-                if (ownsResponse) {
-                    ownsResponse = false
-                    if (state.lastOutcome == TurnOutcome.Completed) {
-                        val text = agent.conversation.value.turns.lastOrNull()?.blocks?.filterIsInstance<TurnBlock.Text>()?.joinToString("\n") { it.text }.orEmpty()
-                        session.response(text)
-                    } else session.agentFailed()
-                }
-            }
-        }
-    }
     val permissions = remember { requireService<com.niki914.zafiro.business.permission.PermissionManager>() }
-    var showSettings by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(settingsOnly) }
     if (status.problem != null) {
-        AlertDialog(onDismissRequest = { session.stop() }, title = { Text(stringResource(R.string.voice_settings)) }, text = { Text(stringResource(when(status.problem) { VoiceProblem.Microphone -> R.string.voice_microphone_error; VoiceProblem.Configuration -> R.string.voice_configuration; VoiceProblem.Quota -> R.string.voice_quota; else -> R.string.voice_error })) }, confirmButton = { TextButton(onClick = { session.stop() }) { Text(stringResource(R.string.voice_stop_audio)) } })
+        AlertDialog(onDismissRequest = { VoiceController.stop(context) }, title = { Text(stringResource(R.string.voice_settings)) }, text = { Text(stringResource(when(status.problem) { VoiceProblem.Microphone -> R.string.voice_microphone_error; VoiceProblem.Configuration -> R.string.voice_configuration; VoiceProblem.Quota -> R.string.voice_quota; else -> R.string.voice_error })) }, confirmButton = { TextButton(onClick = { VoiceController.stop(context) }) { Text(stringResource(R.string.voice_stop_audio)) } })
     }
     var showGlass by remember { mutableStateOf(false) }
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        IconButton(onClick = {
+    if (!settingsOnly) Row(modifier, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+        Box(Modifier.combinedClickable(onClick = {
             if (status.active) {
-                if (ownsResponse && agent.status.value.isRunning) agent.stop()
-                ownsResponse = false; session.stop()
-            }
-            else scope.launch {
+                if (status.phase == ZafiroGlassPhase.Speaking) session.listenNow()
+                else VoiceController.stop(context)
+            } else scope.launch {
                 permissions.request(com.niki914.zafiro.business.permission.Permission.MICROPHONE)
-                if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) session.start()
+                if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) VoiceController.start(context)
             }
-        }) {
+        }, onLongClickLabel = stringResource(R.string.voice_settings), onLongClick = { showSettings = true }).size(48.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
             Icon(if (status.active) Icons.Default.Stop else Icons.Default.Mic, contentDescription = stringResource(when {
                 status.problem != null -> when (status.problem) {
                     VoiceProblem.Configuration -> R.string.voice_configuration
@@ -118,7 +73,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
             }))
 
         }
-        IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, stringResource(R.string.voice_settings)) }
+
     }
     if (showGlass) GlassAppearanceSettings { showGlass = false }
     val destinations by com.niki914.zafiro.chat.routing.NetworkPolicy.destinations.collectAsState()
@@ -138,10 +93,18 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
         var budget by remember { mutableStateOf(com.niki914.zafiro.chat.routing.RequestRouting.budget.value) }
         var budgetMenu by remember { mutableStateOf(false) }
         var networkLock by remember { mutableStateOf(com.niki914.zafiro.chat.routing.NetworkPolicy.enabled.value) }
-        AlertDialog(onDismissRequest = { showSettings = false }, title = { Text(stringResource(R.string.voice_settings)) }, text = {
+        AlertDialog(onDismissRequest = { showSettings = false; onSettingsDismiss() }, title = { Text(stringResource(R.string.voice_settings)) }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { showSettings = false; showGlass = true }) { Text(stringResource(R.string.glass_studio)) }
                 Text(stringResource(R.string.voice_privacy))
+                TextButton(onClick = {
+                    scope.launch {
+                        permissions.request(com.niki914.zafiro.business.permission.Permission.MICROPHONE)
+                        if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) VoiceController.start(context, wake = true)
+                    }
+                }) { Text(stringResource(R.string.voice_wake_enable)) }
+                Text(stringResource(R.string.voice_wake_scope))
+                TextButton(onClick = { VoiceController.stop(context) }) { Text(stringResource(R.string.voice_background_stop)) }
                 Text(stringResource(R.string.voice_active_configuration, activeConfiguration))
                 Row { Text(stringResource(R.string.network_lock)); Switch(networkLock, { networkLock = it }) }
                 Text(stringResource(R.string.network_scope))
@@ -198,7 +161,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                 session.model = model.trim().removePrefix("models/"); session.speed = speed; session.autoSpeak = auto
                 prefs.edit().putString("voice", session.voice).putString("style", session.style).putString("model", session.model)
                     .putFloat("speed", speed).putBoolean("auto_speak", auto).apply()
-                showSettings = false
+                showSettings = false; onSettingsDismiss()
             }) { Text(stringResource(R.string.voice_save)) }
         })
     }

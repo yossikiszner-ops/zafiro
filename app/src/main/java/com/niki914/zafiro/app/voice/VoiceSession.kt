@@ -39,6 +39,8 @@ internal class VoiceSession(
     var model = ""
     var speed = 1f
     var autoSpeak = true
+    private val inputGate = VoiceInputGate()
+    @Volatile private var awaitingAgent = false
     @Volatile private var accepting = true
 
     @android.annotation.SuppressLint("MissingPermission") // Central PermissionManager checks before capture.
@@ -76,7 +78,7 @@ internal class VoiceSession(
                 while (isActive) {
                     val count = recorder.read(frame, 0, frame.size, AudioRecord.READ_BLOCKING)
                     if (count <= 0) { if (!isActive) break; throw VoiceFailure(VoiceProblem.Microphone) }
-                    if (!accepting && playback?.isActive != true) { vad.reset(); preRoll.clear(); utterance = null; continue }
+                    if (!accepting || !inputGate.canCapture(android.os.SystemClock.elapsedRealtime())) { vad.reset(); preRoll.clear(); utterance = null; continue }
                     val bytes = VoiceAudio.pcm(frame, count)
                     preRoll.addLast(bytes); while (preRoll.size > 10) preRoll.removeFirst()
                     when (vad.accept(frame, count, speechClassifier?.isSpeech(if (count == frame.size) frame else ShortArray(frame.size).also { frame.copyInto(it, endIndex = count) }))) {
@@ -114,11 +116,12 @@ internal class VoiceSession(
     }
     private fun transcribe(pcm: ByteArray) {
         accepting = false
+        awaitingAgent = true
         processing = scope.launch {
             publish(ZafiroGlassPhase.Understanding)
             try {
                 val text = transcriber.transcribe(VoiceAudio.wav(pcm))
-                if (text.isBlank()) { accepting = true; publish(ZafiroGlassPhase.Listening) }
+                if (text.isBlank()) { awaitingAgent = false; accepting = true; publish(ZafiroGlassPhase.Listening) }
                 else {
                     mutable.value = mutable.value.copy(transcript = text, phase = ZafiroGlassPhase.Thinking)
                     VoiceActivity.phase.value = null // Actual AgentState owns activity while executing.
@@ -128,11 +131,13 @@ internal class VoiceSession(
             catch (e: Exception) { accepting = true; fail((e as? VoiceFailure)?.problem ?: VoiceProblem.Provider) }
         }
     }
-    fun response(text: String, preview: Boolean = false) {
+    fun response(text: String, preview: Boolean = false, announcement: Boolean = false) {
         if (!mutable.value.active && !preview) return
-        accepting = true
-        if ((!autoSpeak && !preview) || text.isBlank()) { publish(ZafiroGlassPhase.Listening); return }
+        if (!preview && !announcement) awaitingAgent = false
+        accepting = false
+        if ((!autoSpeak && !preview) || text.isBlank()) { accepting = !awaitingAgent; if (accepting) publish(ZafiroGlassPhase.Listening); return }
         interruptSpeech()
+        val lease = inputGate.beginPlayback()
         playback = scope.launch {
             try {
                 val chunks = VoiceAudio.chunks(text)
@@ -145,10 +150,14 @@ internal class VoiceSession(
                         play(clip)
                     }
                 }
-                publish(ZafiroGlassPhase.Listening)
             } catch (cancel: CancellationException) { throw cancel }
             catch (e: Exception) { fail((e as? VoiceFailure)?.problem ?: VoiceProblem.Provider) }
-
+            finally {
+                if (inputGate.endPlayback(lease, android.os.SystemClock.elapsedRealtime())) {
+                    accepting = !awaitingAgent
+                    if (accepting && mutable.value.problem == null && mutable.value.active) publish(ZafiroGlassPhase.Listening)
+                }
+            }
         }
     }
     private suspend fun play(clip: VoiceAudio.Clip) = withContext(Dispatchers.IO) {
@@ -176,13 +185,25 @@ internal class VoiceSession(
         if (mutable.value.phase == ZafiroGlassPhase.Speaking) publish(ZafiroGlassPhase.Interrupted)
     }
     private fun stopTrack() { track?.let { runCatching { it.pause(); it.flush() } } }
+    fun listenNow() {
+        interruptSpeech()
+        accepting = true
+        if (mutable.value.active) publish(ZafiroGlassPhase.Listening)
+    }
     fun stop() {
         epoch++
         capture?.cancel(); capture = null; processing?.cancel(); processing = null
         interruptSpeech(); runCatching { microphone?.stop() }
-        accepting = true; mutable.value = VoiceStatus(); VoiceActivity.phase.value = null
+        awaitingAgent = false; accepting = true; mutable.value = VoiceStatus(); VoiceActivity.phase.value = null
     }
-    fun agentFailed() { accepting = true; fail(VoiceProblem.Provider) }
+    fun submitRecognized(text: String) {
+        if (text.isBlank()) return
+        awaitingAgent = true; accepting = false
+        onTranscript(text)
+    }
+    fun reportFailure(problem: VoiceProblem) { fail(problem) }
+    fun microphoneFailed() { fail(VoiceProblem.Microphone) }
+    fun agentFailed() { awaitingAgent = false; accepting = true; fail(VoiceProblem.Provider) }
     private fun fail(problem: VoiceProblem) { mutable.value = mutable.value.copy(problem = problem, phase = ZafiroGlassPhase.Error); VoiceActivity.phase.value = ZafiroGlassPhase.Error }
     private fun publish(phase: ZafiroGlassPhase) { mutable.value = mutable.value.copy(phase = phase, problem = null); VoiceActivity.phase.value = phase }
 }

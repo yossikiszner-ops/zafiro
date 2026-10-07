@@ -59,6 +59,7 @@ class PointerOverlay : IPointerOverlay {
 
     fun init(ctx: Context) {
         AgentCursorPreferences.load(ctx)
+        focusDrawable.cursorStyle = AgentCursorPreferences.appearance.value.style
         val dm = ctx.resources.displayMetrics
         density = dm.density
         screenW = dm.widthPixels
@@ -111,6 +112,7 @@ class PointerOverlay : IPointerOverlay {
     fun refreshAppearance() {
         handler.post {
             val config = AgentCursorPreferences.appearance.value
+            focusDrawable.cursorStyle = config.style
             if (!config.enabled) { cancelAnim(); feedbackAnim?.cancel(); view?.animate()?.cancel(); view?.alpha = 0f }
             else if ((view?.alpha ?: 0f) > 0f) view?.alpha = config.intensity
         }

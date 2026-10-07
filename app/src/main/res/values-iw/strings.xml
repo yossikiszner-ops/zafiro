@@ -519,4 +519,20 @@
     <string name="ui_onboard_preferences_action_grant_all">מתן כל ההרשאות</string>
     <string name="ui_onboard_preferences_action_skip">דילוג</string>
     <string name="ui_onboard_preferences_toast_denied">לא ניתנה הרשאה</string>
+    <string name="cursor_style_optical">מוקד אופטי</string>
+    <string name="cursor_style_arrow">סמן עכבר מודרני</string>
+    <string name="cursor_style_halo">הילה כפולה</string>
+    <string name="cursor_style_crosshair">כוונת</string>
+    <string name="cursor_style_diamond">יהלום מנסרה</string>
+    <string name="cursor_style_aperture">צמצם</string>
+    <string name="cursor_style_comet">שביט</string>
+    <string name="cursor_style_orbit">מסלול</string>
+    <string name="cursor_style_brackets">סוגריים ממקדים</string>
+    <string name="cursor_style_dot">נקודה מינימלית</string>
+    <string name="voice_wake_enable">הפעלת האזנה מקומית ל־Jarvis</string>
+    <string name="voice_wake_scope">נדרשת תמיכה בזיהוי אנגלית במכשיר. ההאזנה נעצרת לאחר 30 דקות, ללא זיהוי השכמה בענן. לחיצה ממושכת על המיקרופון פותחת הגדרות קול.</string>
+    <string name="voice_background_active">סשן קול פעיל. לחיצה על עצירה משחררת את המיקרופון.</string>
+    <string name="voice_background_stop">עצירת האזנה ברקע</string>
+    <string name="app_update_import">בחירת עדכון APK שהורד</string>
+    <string name="voice_action_checking">בודק את הפעולה הבאה.</string>
 </resources>

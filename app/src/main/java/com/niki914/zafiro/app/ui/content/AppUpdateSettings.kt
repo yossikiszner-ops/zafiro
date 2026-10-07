@@ -1,5 +1,7 @@
 package com.niki914.zafiro.app.ui.content
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,9 +24,21 @@ internal fun AppUpdateSettings(onDismiss: () -> Unit) {
     var checked by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var file by remember { mutableStateOf<File?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            busy = true; failed = false
+            try { file = AppUpdateInstaller.importVerified(context, uri) }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (_: Exception) { failed = true }
+            finally { busy = false }
+        }
+    }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.app_update_title)) }, text = {
         Column {
             Text(BuildConfig.VERSION_NAME)
+            TextButton(enabled = !busy, onClick = { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream")) }) {
+                Text(stringResource(R.string.app_update_import))
+            }
             Text(stringResource(when {
                 busy -> R.string.app_update_busy
                 failed -> R.string.app_update_failed

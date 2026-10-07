@@ -45,6 +45,8 @@ private fun SettingsHomePageContentBody(
     uiState: SettingsUiState,
     onOpenGroup: (ZafiroSettingsGroup) -> Unit,
 ) {
+    var showVoice by remember { mutableStateOf(false) }
+    if (showVoice) com.niki914.zafiro.app.voice.HomeVoiceControls({}, {}, settingsOnly = true, onSettingsDismiss = { showVoice = false })
     var showUpdate by remember { mutableStateOf(false) }
     if (showUpdate) AppUpdateSettings { showUpdate = false }
     var showCursor by remember { mutableStateOf(false) }
@@ -60,6 +62,7 @@ private fun SettingsHomePageContentBody(
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Navigate -> when (action.id) {
+                    "zafiro-voice" -> showVoice = true
                     "zafiro-glass" -> showGlass = true
                     "zafiro-cursor" -> showCursor = true
                     "zafiro-update" -> showUpdate = true
@@ -81,6 +84,7 @@ private fun settingsHomePageSpec(
             title = "Zafiro",
             layout = SettingsSectionLayout.GroupedCard,
             rows = listOf(
+                SettingsRowSpec.Navigation(id = "zafiro-voice", title = stringResource(R.string.voice_settings)),
                 SettingsRowSpec.Navigation(id = "zafiro-glass", title = stringResource(R.string.glass_studio)),
                 SettingsRowSpec.Navigation(id = "zafiro-cursor", title = stringResource(R.string.cursor_settings)),
                 SettingsRowSpec.Navigation(id = "zafiro-update", title = stringResource(R.string.app_update_title)),
