@@ -18,7 +18,8 @@ object LocalIntelligence {
         if (mode.value == IntelligenceMode.CloudQuality) return null
         val domain = TinyIntentRouter.classify(input)
         if (domain.domain != TinyIntentRouter.Domain.Android && domain.margin >= 0.1) return null
-        val result = try { withTimeoutOrNull(1_600) { interpreter?.invoke(input) } }
+        val budgetMs = if (mode.value == IntelligenceMode.FastLocal) 1_600L else 500L
+        val result = try { withTimeoutOrNull(budgetMs) { interpreter?.invoke(input) } }
             catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { null } ?: return null
         return result.command.takeIf { result.confidence >= 0.98 && grounded(input, it) }
@@ -36,7 +37,7 @@ object LocalIntelligence {
             }
             is DirectCommand.Volume -> Regex("volume|ווליום|עוצמת הקול").containsMatchIn(source)
             null -> LocalMessagePlan.parse(command)?.let {
-                Regex("(?:\\bsend\\b|\\btell\\b|שלח)", RegexOption.IGNORE_CASE).containsMatchIn(input) &&
+                Regex("^(?:please )?(?:send\\b|tell\\b|שלח |תשלח )", RegexOption.IGNORE_CASE).containsMatchIn(input.trim()) &&
                     input.contains(it.recipient, true) && input.contains(it.content, true) &&
                     Regex("whatsapp|וואטסאפ|ואטסאפ", RegexOption.IGNORE_CASE).containsMatchIn(input)
             } == true

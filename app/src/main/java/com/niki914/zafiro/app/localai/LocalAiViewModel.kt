@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.chat.routing.ModelArtifact
+import com.niki914.zafiro.chat.routing.ModelTransferPolicy
 import com.niki914.zafiro.chat.routing.IntelligenceMode
 import com.niki914.zafiro.chat.routing.LocalIntelligence
 import kotlinx.coroutines.*
@@ -38,14 +39,17 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
     private fun part(a: ModelArtifact) = File(directory, "${a.id}.partial")
     private fun update(a: ModelArtifact, value: ModelDownloadState) { current.value = current.value + (a.id to value) }
 
-    fun pause(a: ModelArtifact) { jobs.remove(a.id)?.cancel() }
+    fun pause(a: ModelArtifact) { jobs[a.id]?.cancel() }
     fun delete(a: ModelArtifact) {
-        viewModelScope.launch {
-            jobs.remove(a.id)?.cancelAndJoin()
-            LocalCommandRuntime.unload()
+        val previous = jobs[a.id]
+        val deletion = viewModelScope.launch(start = CoroutineStart.LAZY) {
+            previous?.cancelAndJoin()
+            LocalCommandRuntime.unloadAndWait()
             withContext(Dispatchers.IO) { model(a).delete(); part(a).delete() }
             update(a, ModelDownloadState())
         }
+        jobs[a.id] = deletion
+        deletion.start()
     }
     fun setMode(mode: IntelligenceMode) {
         LocalIntelligence.mode.value = mode
@@ -53,7 +57,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
         if (mode == IntelligenceMode.CloudQuality) LocalCommandRuntime.unload()
     }
     fun benchmark(a: ModelArtifact) {
-        if (jobs[a.id]?.isActive == true || !model(a).isFile) return
+        if (jobs[a.id]?.isCompleted == false || !model(a).isFile) return
         jobs[a.id] = viewModelScope.launch {
             update(a, current.value.getValue(a.id).copy(status = R.string.local_ai_benchmark_running))
             try {
@@ -67,7 +71,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
     }
     @OptIn(InternalCoroutinesApi::class)
     fun download(a: ModelArtifact) {
-        if (jobs[a.id]?.isActive == true) return
+        if (jobs[a.id]?.isCompleted == false) return
         jobs[a.id] = viewModelScope.launch {
             update(a, ModelDownloadState(part(a).length(), model(a).isFile, true))
             try {
@@ -79,7 +83,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
                     }
                     val temp = part(a)
                     if (temp.length() > a.bytes) temp.delete()
-                    if (directory.usableSpace < a.bytes - temp.length() + 64 * 1024 * 1024L) throw StorageException()
+                    if (!ModelTransferPolicy.storageAvailable(directory.usableSpace, temp.length(), a.bytes)) throw StorageException()
                     if (temp.length() < a.bytes) {
                         val offset = temp.length()
                         val call = client.newCall(Request.Builder().url(a.url).header("Range", "bytes=$offset-").build())
@@ -87,8 +91,8 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
                         try {
                             call.execute().use { response ->
                                 if (!response.request.url.isHttps || (response.code != 200 && response.code != 206)) throw DownloadException()
-                                val resumed = response.code == 206
-                                if (resumed && response.header("Content-Range")?.startsWith("bytes $offset-") != true) throw DownloadException()
+                                val resumed = ModelTransferPolicy.resume(response.code, response.header("Content-Range"), offset, a.bytes)
+                                    ?: throw DownloadException()
                                 var count = if (resumed) offset else 0L
                                 response.body?.byteStream()?.use { input ->
                                     FileOutputStream(temp, resumed).use { output ->

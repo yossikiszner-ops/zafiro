@@ -42,6 +42,7 @@ object LocalCommandRuntime {
     )
     fun install() { LocalIntelligence.interpreter = { interpret(it) } }
     fun unload() { scope.launch { mutex.withLock { closeLocked() } } }
+    suspend fun unloadAndWait() { withContext(Dispatchers.IO) { mutex.withLock { closeLocked() } } }
     private fun closeLocked() { idle?.cancel(); idle = null; engine?.let { runCatching { it.close() } }; engine = null; reliability = 0.0 }
     private fun scheduleUnload() {
         idle?.cancel()

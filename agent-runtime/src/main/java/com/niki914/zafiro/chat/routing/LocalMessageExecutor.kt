@@ -33,7 +33,8 @@ internal object LocalMessageExecutor {
                 val call = ContentBlock.ToolCall("local-message-${step++}", context.getString(label), "{}")
                 val partial = AssistantMessage(listOf(call))
                 emit(TurnEvent.ToolRunning(0, call, partial))
-                val result = operation()
+                val result = try { operation() }
+                catch (_: PlanStopped) { BuiltinToolResult.failure("LOCAL_VERIFICATION_FAILED", "Expected screen did not appear") }
                 if (!result.ok) {
                     emit(TurnEvent.ToolFailed(0, call, ToolCallOutcome.Failure(result.toJsonString()), partial))
                     throw PlanStopped()
@@ -49,48 +50,41 @@ internal object LocalMessageExecutor {
                         if (before != null && after != null) ScreenBrain.graph.verifiedTransition(before, after)
                         previousScreen = current
                     } ?: throw PlanStopped()
-            fun composer() = SemanticTarget(resourceId = "$pkg:id/entry", editable = true)
-            fun searchField() = SemanticTarget(editable = true)
-            fun ScreenState.correctRecipient() = elements.any {
-                it.resourceId == "$pkg:id/conversation_contact_name" && it.text == plan.recipient
-            }
+            val task = LocalTaskPlan.message(plan)
             var sent = false
             var cancelled = false
             try {
-                run(R.string.local_opening_app) {
-                    launch.tool.invoke(BuiltinToolRequest("launch_app", "{\"app_name\":\"WhatsApp\"}"))
+                for (instruction in task.steps) {
+                    if (instruction.action == LocalTaskPlan.Action.Approval) {
+                        val decision = requireService<AgentControl>().decideApproval(ApprovalRequest.ToolExecution(
+                            context.getString(R.string.local_send_message), "WhatsApp\n" + plan.recipient + "\n" + plan.content,
+                            context.getString(R.string.local_send_confirmation)))
+                        if (decision != ApprovalDecision.Allow) { cancelled = true; throw PlanStopped() }
+                        awaitScreen { task.matches(task.steps.first { step -> step.phase == LocalTaskPlan.Phase.Compose }, it) }
+                        continue
+                    }
+                    val label = when (instruction.phase) {
+                        LocalTaskPlan.Phase.Launch -> R.string.local_opening_app
+                        LocalTaskPlan.Phase.Search, LocalTaskPlan.Phase.RecipientQuery -> R.string.local_finding_contact
+                        LocalTaskPlan.Phase.Conversation -> R.string.local_opening_conversation
+                        LocalTaskPlan.Phase.Compose -> R.string.local_writing_message
+                        LocalTaskPlan.Phase.Send -> R.string.local_send_message
+                        LocalTaskPlan.Phase.Approval -> error("Approval is handled separately")
+                    }
+                    run(label) {
+                        val result = when (instruction.action) {
+                            LocalTaskPlan.Action.Launch -> launch.tool.invoke(BuiltinToolRequest("launch_app", "{\"app_name\":\"WhatsApp\"}"))
+                            LocalTaskPlan.Action.Tap -> AccessibilityController.executeSemanticTarget(
+                                instruction.target!!, NodeAction.CLICK, expectedPackage = task.packageName)
+                            LocalTaskPlan.Action.SetText -> AccessibilityController.executeSemanticTarget(
+                                instruction.target!!, NodeAction.SET_TEXT, instruction.text, expectedPackage = task.packageName)
+                            LocalTaskPlan.Action.Approval -> error("Approval is handled separately")
+                        }
+                        if (result.ok) awaitScreen { task.matches(instruction, it) }
+                        result
+                    }
+                    if (instruction.phase == LocalTaskPlan.Phase.Send) sent = true
                 }
-                awaitScreen { true }
-                run(R.string.local_finding_contact) {
-                    AccessibilityController.executeSemanticTarget(
-                        SemanticTarget(labels = setOf("Search", "חיפוש"), clickable = true), NodeAction.CLICK)
-                }
-                awaitScreen { it.resolve(searchField()) != null }
-                run(R.string.local_finding_contact) {
-                    AccessibilityController.executeSemanticTarget(searchField(), NodeAction.SET_TEXT, plan.recipient)
-                }
-                val recipient = SemanticTarget(labels = setOf(plan.recipient))
-                awaitScreen { it.resolve(recipient) != null }
-                run(R.string.local_opening_conversation) {
-                    AccessibilityController.executeSemanticTarget(recipient, NodeAction.CLICK)
-                }
-                awaitScreen { it.resolve(composer())?.text?.isEmpty() == true && it.correctRecipient() }
-                run(R.string.local_writing_message) {
-                    AccessibilityController.executeSemanticTarget(composer(), NodeAction.SET_TEXT, plan.content)
-                }
-                awaitScreen { it.resolve(composer())?.text == plan.content }
-                val decision = requireService<AgentControl>().decideApproval(ApprovalRequest.ToolExecution(
-                    context.getString(R.string.local_send_message), "WhatsApp\n${plan.recipient}\n${plan.content}",
-                    context.getString(R.string.local_send_confirmation)))
-                if (decision != ApprovalDecision.Allow) { cancelled = true; throw PlanStopped() }
-                // Permission UI may change the foreground window. Recheck the real conversation after it closes.
-                awaitScreen { it.resolve(composer())?.text == plan.content && it.correctRecipient() }
-                run(R.string.local_send_message) {
-                    AccessibilityController.executeSemanticTarget(
-                        SemanticTarget(resourceId = "$pkg:id/send", clickable = true), NodeAction.CLICK)
-                }
-                awaitScreen { it.resolve(composer())?.text?.isEmpty() == true }
-                sent = true // Composer cleared; delivery/read status is deliberately not asserted.
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: PlanStopped) { /* Stop, never guess/retry a partially composed or submitted message. */ }
             AssistantMessage(listOf(ContentBlock.Text(context.getString(when {

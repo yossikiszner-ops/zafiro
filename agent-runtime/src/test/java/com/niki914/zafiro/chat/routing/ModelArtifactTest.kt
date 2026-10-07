@@ -6,6 +6,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ModelArtifactTest {
+    @Test fun productionArtifactsUsePinnedRevisionsAndFullSha256Digests() {
+        ModelArtifact.candidates.forEach {
+            assertTrue(it.bytes > 0)
+            assertTrue(it.sha256.matches(Regex("[0-9a-f]{64}")))
+            assertTrue(it.url.matches(Regex("https://huggingface\\.co/[^/]+/[^/]+/resolve/[0-9a-f]{40}/[^/]+\\.litertlm")))
+        }
+    }
     @Test fun corruptAndPartialWeightsAreRejected() {
         val file = File.createTempFile("model-integrity", ".litertlm")
         try {

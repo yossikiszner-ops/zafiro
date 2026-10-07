@@ -652,12 +652,13 @@ object AccessibilityController {
      * with automatic shell fallback for non-SET_TEXT actions.
      */
     /** Fresh semantic resolution feeds the existing token/cursor/permission executor. */
-    suspend fun executeSemanticTarget(target: SemanticTarget, action: NodeAction, text: String? = null): BuiltinToolResult {
+    suspend fun executeSemanticTarget(target: SemanticTarget, action: NodeAction, text: String? = null, expectedPackage: String? = null): BuiltinToolResult {
         try { refreshNodeCache() }
         catch (cancel: CancellationException) { throw cancel }
         catch (_: Exception) { return BuiltinToolResult.failure("SERVICE_UNAVAILABLE", "Screen unavailable") }
         val matches = nodeCache.entries.filter { (_, node) ->
             node.isVisibleToUser && node.isEnabled && !node.isPassword &&
+                (expectedPackage == null || node.packageName?.toString() == expectedPackage) &&
                 (target.editable == null || node.isEditable == target.editable) &&
                 (target.clickable == null || node.isClickable == target.clickable) &&
                 (target.resourceId == null || node.viewIdResourceName == target.resourceId) &&
