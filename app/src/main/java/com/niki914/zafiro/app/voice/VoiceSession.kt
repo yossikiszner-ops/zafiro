@@ -69,7 +69,7 @@ internal class VoiceSession(
                         frameSize = com.konovalov.vad.webrtc.config.FrameSize.FRAME_SIZE_320,
                         mode = com.konovalov.vad.webrtc.config.Mode.VERY_AGGRESSIVE,
                     )
-                } catch (_: LinkageError) { null } // Unsupported native ABI: local energy fallback.
+                } catch (_: LinkageError) { null } catch (_: Exception) { null } // Unsupported VAD configuration: local energy fallback.
                 recorder.startRecording()
                 val vad = LocalVoiceDetector(); val frame = ShortArray(320); val preRoll = ArrayDeque<ByteArray>()
                 var utterance: ByteArrayOutputStream? = null; var silentFrames = 0

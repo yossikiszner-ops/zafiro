@@ -807,8 +807,17 @@ private fun HomePageContentBody(
             )
         }
 
+        val currentVoiceInput by rememberUpdatedState(onInputChange)
+        val currentVoiceSend by rememberUpdatedState(onSendClick)
+        val voiceControls = remember {
+            androidx.compose.runtime.movableContentOf {
+                com.niki914.zafiro.app.voice.HomeVoiceControls(
+                    onInputChange = { currentVoiceInput(it) }, onSend = { currentVoiceSend() },
+                )
+            }
+        }
         LiquidChatComposer(
-            voiceContent = { com.niki914.zafiro.app.voice.HomeVoiceControls(onInputChange, onSendClick) },
+            voiceContent = voiceControls,
             value = uiState.input,
             onValueChange = onInputChange,
             onSendClick = onSendClick,
