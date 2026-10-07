@@ -6,6 +6,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RequestPlannerTest {
+    // Protects the reported Omni quota/no-text failure: video models must not be selected for chat.
+    @Test fun videoModelCannotWinFastRoutingOrRemainConfiguredForText() {
+        val ids = listOf("gemini-omni-1.1-flash", "gemini-3.8-flash", "gemini-3.8-flash-tts")
+        assertEquals("gemini-3.8-flash", RequestPlanner.selectModel("gemini-3.8-flash", ids, "hello", false, RequestBudget.Balanced, emptySet()).first)
+        assertEquals("gemini-3.8-flash", RequestPlanner.selectModel("gemini-omni-1.1-flash", ids, "deep research", false, RequestBudget.Quality, emptySet()).first)
+        assertEquals("unsupported_model", RequestPlanner.selectModel("gemini-omni-1.1-flash", listOf(ids.first()), "hello", false, RequestBudget.Balanced, emptySet()).second)
+    }
+
     // Protects normal chat latency without reducing reasoning for complex tasks or Quality mode.
     @Test fun ordinaryFlashChatAvoidsHighReasoningButComplexTasksKeepIt() {
         assertEquals(ThinkingLevel.LOW, RequestPlanner.thinkingLevel("gemini-3.8-flash", "שלום", false, RequestBudget.Balanced, ThinkingLevel.HIGH))

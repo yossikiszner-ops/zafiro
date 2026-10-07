@@ -86,7 +86,7 @@ internal class GeminiVoiceProvider : VoiceTranscriber, VoiceSynthesizer {
         return models
     }
     override suspend fun transcribe(wav: ByteArray): String {
-        val candidates = availableModels().filter { it.startsWith("gemini-") && !it.contains("tts") && !it.contains("image") && !it.contains("live") && !it.contains("native-audio") && !it.contains("transcribe") && !it.contains("embedding") && !it.contains("robotics") && !it.contains("computer-use") }
+        val candidates = availableModels().filter(com.niki914.zafiro.chat.routing.GeminiModelCapabilities::isConversationModel)
         val ordered = candidates.sortedWith(compareBy<String> { when { "flash-lite" in it -> 0; "flash" in it -> 1; else -> 2 } }.thenByDescending { it })
         val body = buildJsonObject {
             putJsonArray("contents") { addJsonObject { putJsonArray("parts") {

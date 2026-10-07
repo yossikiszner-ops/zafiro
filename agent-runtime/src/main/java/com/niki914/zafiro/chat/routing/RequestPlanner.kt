@@ -22,10 +22,11 @@ internal object RequestPlanner {
         ?.filterIsInstance<ContentBlock.Text>()?.joinToString("\n") { it.text }.orEmpty()
     fun complex(text: String): Boolean = text.length > 1200 || Regex("(?i)architect|proof|deep research|compare.*trade|debug|refactor|אדריכלות|מחקר מעמיק|הוכח|ניתוח מעמיק|תקן.*קוד").containsMatchIn(text)
     fun selectModel(configured: String, available: List<String>, text: String, images: Boolean, budget: RequestBudget, cooling: Set<String>): Pair<String, String> {
-        val suitable = available.filter { it.startsWith("gemini-") && listOf("tts", "live", "image", "native-audio", "transcribe", "embedding", "computer-use", "robotics").none(it::contains) && it !in cooling }
-        if (configured in cooling) {
+        val suitable = available.filter { GeminiModelCapabilities.isConversationModel(it) && it !in cooling }
+        if (configured in cooling || GeminiModelCapabilities.isMediaOnly(configured)) {
             val fallback = suitable.sortedWith(compareBy<String> { if ("pro" in it && (images || complex(text) || budget == RequestBudget.Quality)) 0 else 1 }.thenByDescending { it }).firstOrNull()
-            if (fallback != null) return fallback to "fallback_after_failure"
+            if (fallback != null) return fallback to if (GeminiModelCapabilities.isMediaOnly(configured)) "conversation_model_required" else "fallback_after_failure"
+            if (GeminiModelCapabilities.isMediaOnly(configured)) return configured to "unsupported_model"
         }
         if (images) return configured to "multimodal"
         if (complex(text) || budget == RequestBudget.Quality) return configured to "quality"
@@ -79,3 +80,11 @@ internal object RequestPlanner {
     }
     fun estimateTokens(text: String): Int = (text.length + 2) / 3
 }
+
+/** Naming exclusions supplement the API's generateContent discovery: that method also serves media models. */
+object GeminiModelCapabilities {
+    private val excluded = listOf("tts", "live", "image", "native-audio", "transcribe", "embedding", "computer-use", "robotics", "omni", "veo", "video")
+    fun isConversationModel(id: String): Boolean = id.startsWith("gemini-") && excluded.none(id::contains)
+    fun isMediaOnly(id: String): Boolean = id.startsWith("gemini-") && excluded.any(id::contains)
+}
+internal class NoConversationModelAvailableException : Exception("Select an available conversation model instead of a media model")

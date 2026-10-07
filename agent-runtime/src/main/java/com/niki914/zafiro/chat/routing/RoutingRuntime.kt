@@ -40,6 +40,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
         val text = RequestPlanner.userText(history)
         val images = history.filterIsInstance<Message.User>().lastOrNull()?.content?.any { it is ContentBlock.Image } == true
         val (chosen, reason) = RequestPlanner.selectModel(snapshot.model, if (google) cached else emptyList(), text, images, budget, cooldown.filterValues { it > now }.keys)
+        if (google && reason == "unsupported_model") throw NoConversationModelAvailableException()
         val tools = RequestPlanner.tools(snapshot.tools, history)
         val compact = RequestPlanner.compact(history, if (budget == RequestBudget.Economy) 3 else 5)
         val projected = snapshot.copy(model = chosen, tools = tools,
@@ -66,8 +67,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
             if (currentModel.isNotBlank()) cooldown[currentModel] = maxOf(cooldown[currentModel] ?: 0, System.currentTimeMillis() + delay)
             if (!google || attempt == 2 || model.isBlank()) break
             val alternate = cached.firstOrNull { candidate ->
-                candidate !in tried && candidate.startsWith("gemini-") && "flash" in candidate &&
-                    listOf("tts", "live", "image", "native-audio", "transcribe", "embedding", "computer-use", "robotics").none(candidate::contains) &&
+                candidate !in tried && GeminiModelCapabilities.isConversationModel(candidate) && "flash" in candidate &&
                     (cooldown[candidate] ?: 0) <= System.currentTimeMillis()
             } ?: break
             val body = json.parseToJsonElement(request.body!!).jsonObject

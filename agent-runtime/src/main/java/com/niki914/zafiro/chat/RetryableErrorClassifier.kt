@@ -47,7 +47,7 @@ object RetryableErrorClassifier {
         LLMErrorCode.Overloaded -> LlmErrorCode.Overloaded
         LLMErrorCode.ContextOverflow -> LlmErrorCode.Parse
         LLMErrorCode.Parse -> LlmErrorCode.Parse
-        LLMErrorCode.HookFailed -> LlmErrorCode.HookFailed
+        LLMErrorCode.HookFailed -> if (error.cause is com.niki914.zafiro.chat.routing.NoConversationModelAvailableException) LlmErrorCode.ConfigRequired else LlmErrorCode.HookFailed
         LLMErrorCode.ToolExecutionFailed -> LlmErrorCode.ToolExecutionFailed
         LLMErrorCode.RetryExhausted -> LlmErrorCode.RetryExhausted
         LLMErrorCode.Transport -> classifyByPattern(error)
