@@ -45,6 +45,8 @@ private fun SettingsHomePageContentBody(
     uiState: SettingsUiState,
     onOpenGroup: (ZafiroSettingsGroup) -> Unit,
 ) {
+    var showUpdate by remember { mutableStateOf(false) }
+    if (showUpdate) AppUpdateSettings { showUpdate = false }
     var showCursor by remember { mutableStateOf(false) }
     if (showCursor) AgentCursorSettings { showCursor = false }
     var showGlass by remember { mutableStateOf(false) }
@@ -60,6 +62,7 @@ private fun SettingsHomePageContentBody(
                 is SettingsRowAction.Navigate -> when (action.id) {
                     "zafiro-glass" -> showGlass = true
                     "zafiro-cursor" -> showCursor = true
+                    "zafiro-update" -> showUpdate = true
                     else -> groupsById[action.id]?.let(onOpenGroup)
                 }
                 is SettingsRowAction.Click -> Unit
@@ -80,6 +83,7 @@ private fun settingsHomePageSpec(
             rows = listOf(
                 SettingsRowSpec.Navigation(id = "zafiro-glass", title = stringResource(R.string.glass_studio)),
                 SettingsRowSpec.Navigation(id = "zafiro-cursor", title = stringResource(R.string.cursor_settings)),
+                SettingsRowSpec.Navigation(id = "zafiro-update", title = stringResource(R.string.app_update_title)),
             ),
         )) + uiState.sections.map { section ->
             SettingsSectionSpec(

@@ -11,12 +11,15 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import okhttp3.Request
 
 data class UpdateCheckResult(
     val hasUpdate: Boolean,
     val remoteVersion: String?,
     val releaseUrl: String?,
+    val apkUrl: String? = null,
 )
 
 object UpdateCheckHolder {
@@ -33,6 +36,11 @@ object UpdateCheckHolder {
         _result.value = r
     }
 
+    suspend fun refresh(currentVersion: String) {
+        dismissed = false
+        _result.value = UpdateCheckApi.check(currentVersion)
+    }
+
     fun dismiss() {
         dismissed = true
         _result.value =
@@ -47,9 +55,9 @@ private object UpdateCheckApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     private const val GITHUB_API_LATEST =
-        "https://api.github.com/repos/niki914/zafiro/releases/latest"
+        "https://api.github.com/repos/yossikiszner-ops/zafiro/releases/latest"
     private const val GITHUB_API_LATEST_ANY =
-        "https://api.github.com/repos/niki914/zafiro/releases?per_page=1"
+        "https://api.github.com/repos/yossikiszner-ops/zafiro/releases?per_page=1"
 
     private val semverRe = Regex("""(\d+\.\d+\.\d+)""")
 
@@ -88,11 +96,13 @@ private object UpdateCheckApi {
 
         if (!isNewer(remoteVersion, currentVersion)) return null
 
+        val apkUrl = obj["assets"]?.jsonArray?.firstOrNull { it.jsonObject["name"]?.jsonPrimitive?.content?.endsWith(".apk", true) == true }?.jsonObject?.get("browser_download_url")?.jsonPrimitive?.content
         val releaseUrl = obj["html_url"]?.jsonPrimitive?.content.orEmpty()
         return UpdateCheckResult(
             hasUpdate = true,
             remoteVersion = remoteVersion,
             releaseUrl = releaseUrl,
+            apkUrl = apkUrl,
         )
     }
 

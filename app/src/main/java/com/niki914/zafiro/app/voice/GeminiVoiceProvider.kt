@@ -27,7 +27,6 @@ internal class GeminiVoiceProvider : VoiceTranscriber, VoiceSynthesizer {
     private suspend fun key(): String {
         val doc = XRepo.llmConfigs.document()
         val config = doc.activeConfig()?.takeIf { isGoogle(it.endpoint, it.provider) }
-            ?: doc.configs.firstOrNull { isGoogle(it.endpoint, it.provider) }
             ?: throw VoiceFailure(VoiceProblem.Configuration)
         if (config.apiKey.isBlank()) throw VoiceFailure(VoiceProblem.Configuration)
         if (credentialId != config.id + config.apiKey.hashCode()) { models = emptyList(); blocked.clear(); credentialId = config.id + config.apiKey.hashCode() }

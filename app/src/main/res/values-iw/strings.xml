@@ -430,7 +430,17 @@
   <string name="agent_resident_action_approve">אישור</string>
   <string name="agent_resident_action_decline">דחייה</string>
     <string name="provider_quota_title">מכסת ה־API אינה זמינה</string>
-    <string name="provider_quota_body">למודל הזה אין מכסת API זמינה בפרויקט. בחרו מודל זמין או בדקו את המכסה והחיוב של הפרויקט ב־Google AI Studio. מנוי Gemini אינו מעניק מכסת API.</string>
+    <string name="provider_quota_body">Google דחה את הבקשה עבור הפרויקט והמודל שנשלחו. בדקו שהתצורה הפעילה משתמשת במפתח ובפרויקט הרצויים, ובדקו את מכסת המודל ב־Google AI Studio.</string>
     <string name="provider_auth_body">בדקו או החליפו את מפתח ה־API בהגדרות ספק הבינה.</string>
     <string name="provider_rate_title">יותר מדי בקשות</string>
+    <string name="app_update_title">עדכוני האפליקציה</string>
+    <string name="app_update_check">בדיקת עדכון</string>
+    <string name="app_update_download">הורדת עדכון</string>
+    <string name="app_update_install">התקנה / מתן הרשאת התקנה</string>
+    <string name="app_update_hint">עדכונים מגיעים ממאגר Zafiro. מערכת Android מבקשת אישור לפני התקנה.</string>
+    <string name="app_update_busy">בודק או מוריד…</string>
+    <string name="app_update_failed">לא ניתן להכין את העדכון. בדקו את החיבור לרשת. קובץ ההתקנה חייב להתאים לאפליקציה ולחתימה שלה.</string>
+    <string name="app_update_ready">העדכון אומת. אם Android מבקש הרשאה, אפשרו התקנה, חזרו לכאן ולחצו שוב על התקנה.</string>
+    <string name="app_update_available">עדכון זמין להורדה.</string>
+    <string name="app_update_no_release">לא נמצאה גרסה חדשה יותר שזמינה להורדה.</string>
 </resources>

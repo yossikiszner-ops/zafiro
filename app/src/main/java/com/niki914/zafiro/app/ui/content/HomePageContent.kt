@@ -404,6 +404,8 @@ fun HomePageContent(
         },
     )
 
+    var showUpdateInstaller by remember { mutableStateOf(false) }
+    if (showUpdateInstaller) AppUpdateSettings { showUpdateInstaller = false }
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
     val uriHandler = LocalUriHandler.current
     val remoteVersion = updateCheckResult?.remoteVersion.orEmpty()
@@ -416,8 +418,7 @@ fun HomePageContent(
         positiveButtonText = stringResource(R.string.update_dialog_confirm),
         negativeButtonText = stringResource(R.string.update_dialog_cancel),
         onPositiveClick = {
-            uriHandler.openUri(releaseUrl)
-            UpdateCheckHolder.dismiss()
+            showUpdateInstaller = true
         },
         onNegativeClick = { UpdateCheckHolder.dismiss() },
         dismissOnBackgroundTap = false,
