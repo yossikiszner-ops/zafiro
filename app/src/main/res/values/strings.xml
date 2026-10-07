@@ -490,4 +490,8 @@
     <string name="app_update_ready">Update verified. If Android requests permission, allow installation, return here and press Install again.</string>
     <string name="app_update_available">An update is available for download.</string>
     <string name="app_update_no_release">No newer downloadable release was found.</string>
+    <string name="voice_active_configuration">Active AI configuration: %1$s</string>
+    <string name="voice_test_audio">Test voice without microphone</string>
+    <string name="voice_stop_audio">Stop speech</string>
+    <string name="voice_test_sample">Hello. This is a Zafiro voice test.</string>
 </resources>

@@ -128,10 +128,10 @@ internal class VoiceSession(
             catch (e: Exception) { accepting = true; fail((e as? VoiceFailure)?.problem ?: VoiceProblem.Provider) }
         }
     }
-    fun response(text: String) {
-        if (!mutable.value.active) return
+    fun response(text: String, preview: Boolean = false) {
+        if (!mutable.value.active && !preview) return
         accepting = true
-        if (!autoSpeak || text.isBlank()) { publish(ZafiroGlassPhase.Listening); return }
+        if ((!autoSpeak && !preview) || text.isBlank()) { publish(ZafiroGlassPhase.Listening); return }
         interruptSpeech()
         playback = scope.launch {
             try {

@@ -127,6 +127,9 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
         var model by remember { mutableStateOf(session.model) }
         var speed by remember { mutableFloatStateOf(session.speed) }
         var auto by remember { mutableStateOf(session.autoSpeak) }
+        var activeConfiguration by remember { mutableStateOf("") }
+        LaunchedEffect(Unit) { activeConfiguration = com.niki914.zafiro.repo.XRepo.llmConfigs.active()?.name.orEmpty() }
+        val speechSample = stringResource(R.string.voice_test_sample)
         var models by remember { mutableStateOf<List<String>>(emptyList()) }
         var menu by remember { mutableStateOf(false) }
         var discovered by remember { mutableStateOf(false) }
@@ -137,6 +140,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { showSettings = false; showGlass = true }) { Text(stringResource(R.string.glass_studio)) }
                 Text(stringResource(R.string.voice_privacy))
+                Text(stringResource(R.string.voice_active_configuration, activeConfiguration))
                 Row { Text(stringResource(R.string.network_lock)); Switch(networkLock, { networkLock = it }) }
                 Text(stringResource(R.string.network_scope))
                 destinations.forEach { destination -> Text(destination) }
@@ -175,6 +179,12 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                 Text(stringResource(R.string.voice_speed, speed))
                 Slider(speed, { speed = it }, valueRange = .75f..1.5f)
                 Row { Text(stringResource(R.string.voice_auto)); Switch(auto, { auto = it }) }
+                TextButton(onClick = {
+                    session.voice = voice.trim().ifBlank { "Charon" }; session.style = style.trim().take(300)
+                    session.model = model.trim().removePrefix("models/"); session.speed = speed
+                    session.response(speechSample, preview = true)
+                }) { Text(stringResource(R.string.voice_test_audio)) }
+                TextButton(onClick = { session.interruptSpeech() }) { Text(stringResource(R.string.voice_stop_audio)) }
             }
         }, confirmButton = {
             TextButton(onClick = {

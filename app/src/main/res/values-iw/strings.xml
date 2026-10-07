@@ -443,4 +443,8 @@
     <string name="app_update_ready">העדכון אומת. אם Android מבקש הרשאה, אפשרו התקנה, חזרו לכאן ולחצו שוב על התקנה.</string>
     <string name="app_update_available">עדכון זמין להורדה.</string>
     <string name="app_update_no_release">לא נמצאה גרסה חדשה יותר שזמינה להורדה.</string>
+    <string name="voice_active_configuration">תצורת בינה פעילה: %1$s</string>
+    <string name="voice_test_audio">בדיקת קול ללא מיקרופון</string>
+    <string name="voice_stop_audio">עצירת דיבור</string>
+    <string name="voice_test_sample">שלום. זו בדיקת קול של זאפירו.</string>
 </resources>
