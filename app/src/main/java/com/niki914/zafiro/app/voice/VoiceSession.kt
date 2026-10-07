@@ -155,7 +155,10 @@ internal class VoiceSession(
             finally {
                 if (inputGate.endPlayback(lease, android.os.SystemClock.elapsedRealtime())) {
                     accepting = !awaitingAgent
-                    if (accepting && mutable.value.problem == null && mutable.value.active) publish(ZafiroGlassPhase.Listening)
+                    if (mutable.value.problem == null && mutable.value.active) {
+                        if (accepting) publish(ZafiroGlassPhase.Listening)
+                        else { mutable.value = mutable.value.copy(phase = ZafiroGlassPhase.Thinking); VoiceActivity.phase.value = null }
+                    }
                 }
             }
         }
@@ -200,6 +203,8 @@ internal class VoiceSession(
     fun submitRecognized(text: String) {
         if (text.isBlank()) return
         awaitingAgent = true; accepting = false
+        mutable.value = mutable.value.copy(transcript = text, phase = ZafiroGlassPhase.Thinking)
+        VoiceActivity.phase.value = null
         onTranscript(text)
     }
     fun reportFailure(problem: VoiceProblem) { fail(problem) }
