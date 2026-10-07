@@ -405,13 +405,13 @@ fun HomePageContent(
     )
 
     var showUpdateInstaller by remember { mutableStateOf(false) }
-    if (showUpdateInstaller) AppUpdateSettings { showUpdateInstaller = false }
+    if (showUpdateInstaller) AppUpdateSettings { showUpdateInstaller = false; UpdateCheckHolder.dismiss() }
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
     val uriHandler = LocalUriHandler.current
     val remoteVersion = updateCheckResult?.remoteVersion.orEmpty()
     val releaseUrl = updateCheckResult?.releaseUrl.orEmpty()
     ConfirmationLiquidDialog(
-        visible = updateCheckResult?.hasUpdate == true,
+        visible = updateCheckResult?.hasUpdate == true && !showUpdateInstaller,
         onDismissRequest = { UpdateCheckHolder.dismiss() },
         title = stringResource(R.string.update_dialog_title),
         text = stringResource(R.string.update_dialog_text, remoteVersion),
