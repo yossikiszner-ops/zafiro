@@ -11,6 +11,21 @@ class LocalTaskPlanTest {
     private fun conversation(recipient: String, draft: String, pkg: String = "com.whatsapp") = ScreenState(pkg, 1, 1,
         listOf(ScreenElement("0", pkg + ":id/conversation_contact_name", "TextView", recipient, "", false, false, true, false, emptyList()),
             ScreenElement("1", pkg + ":id/entry", "EditText", draft, "", true, true, true, true, emptyList())))
+    // The search query is editable and repeats the recipient's name; it must never be a contact target.
+    @Test fun searchQueryIsNotMistakenForTheConversationResult() {
+        val query = ScreenElement("0", "com.whatsapp:id/search_src_text", "EditText", "אמא", "", true, true, true, true, emptyList())
+        val result = ScreenElement("1", "com.whatsapp:id/contact_name", "TextView", "אמא", "", false, false, true, false, emptyList())
+        val screen = ScreenState("com.whatsapp", 1, 1, listOf(query, result))
+        assertTrue(plan.matches(plan.steps[2], screen))
+        assertEquals(result, screen.resolve(plan.steps[3].target!!))
+        assertEquals(setOf(LocalTaskPlan.Phase.Search), plan.navigationShortcut(screen))
+    }
+    @Test fun alreadyOpenVerifiedConversationSkipsSearchButDraftsDoNot() {
+        assertEquals(setOf(LocalTaskPlan.Phase.Search, LocalTaskPlan.Phase.RecipientQuery, LocalTaskPlan.Phase.Conversation),
+            plan.navigationShortcut(conversation("אמא", "")))
+        assertTrue(plan.navigationShortcut(conversation("אמא", "existing draft")).isEmpty())
+        assertTrue(plan.navigationShortcut(conversation("יוסי", "")).isEmpty())
+    }
     @Test fun completePlanHasOneSubmissionAfterExplicitApproval() {
         assertEquals(listOf(LocalTaskPlan.Phase.Launch, LocalTaskPlan.Phase.Search,
             LocalTaskPlan.Phase.RecipientQuery, LocalTaskPlan.Phase.Conversation, LocalTaskPlan.Phase.Compose,

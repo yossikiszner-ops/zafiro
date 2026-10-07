@@ -73,7 +73,10 @@ internal object DirectCommandExecutor {
                 command is DirectCommand.Volume -> R.string.direct_volume_updated
                 else -> R.string.direct_back_performed
             })
-            AssistantMessage(listOf(ContentBlock.Text(message)), stopReason = StopReason.Stop)
+            val response = AssistantMessage(listOf(ContentBlock.Text(message)), stopReason = StopReason.Stop)
+            if (!result.ok || ((command is DirectCommand.Open || command is DirectCommand.OpenSettings) && !verified))
+                throw com.niki914.okia.LocalTurnStopped(response)
+            response
         }
     }
     private fun openSettings(context: Context, screen: DirectCommand.SettingsScreen): BuiltinToolResult {

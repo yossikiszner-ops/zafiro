@@ -17,6 +17,16 @@ internal data class LocalTaskPlan(val packageName: String, val steps: List<Step>
         data class Conversation(val recipient: String, val composerText: String) : Expected
         data object Approval : Expected
     }
+    /** Reuse an already verified conversation/search state instead of rediscovering it. */
+    fun navigationShortcut(screen: ScreenState): Set<Phase> {
+        if (screen.packageName != packageName) return emptySet()
+        val conversation = steps.first { it.phase == Phase.Conversation }
+        if (matches(conversation, screen)) return setOf(Phase.Search, Phase.RecipientQuery, Phase.Conversation)
+        val activeSearch = screen.elements.singleOrNull {
+            it.editable && it.enabled && it.resourceId?.endsWith(":id/search_src_text") == true
+        }
+        return if (activeSearch != null) setOf(Phase.Search) else emptySet()
+    }
     fun canExecute(step: Step, screen: ScreenState): Boolean = screen.packageName == packageName &&
         (step.target == null || screen.resolve(step.target) != null) && step.preconditions.all { screen.resolve(it) != null }
     fun matches(step: Step, screen: ScreenState): Boolean {
@@ -36,7 +46,7 @@ internal data class LocalTaskPlan(val packageName: String, val steps: List<Step>
             val pkg = "com.whatsapp"
             val search = SemanticTarget(labels = setOf("Search", "חיפוש"), clickable = true)
             val searchField = SemanticTarget(editable = true)
-            val recipient = SemanticTarget(labels = setOf(message.recipient))
+            val recipient = SemanticTarget(labels = setOf(message.recipient), editable = false)
             val composer = SemanticTarget(resourceId = pkg + ":id/entry", editable = true, exactText = "")
             val title = SemanticTarget(resourceId = pkg + ":id/conversation_contact_name", labels = setOf(message.recipient))
             return LocalTaskPlan(pkg, listOf(

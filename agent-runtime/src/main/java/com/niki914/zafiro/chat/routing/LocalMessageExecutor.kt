@@ -52,9 +52,25 @@ internal object LocalMessageExecutor {
                     } ?: throw PlanStopped()
             val task = LocalTaskPlan.message(plan)
             var sent = false
+            var submissionAttempted = false
             var cancelled = false
+            var shortcut = emptySet<LocalTaskPlan.Phase>()
+            var navigationRecovered = false
             try {
                 for (instruction in task.steps) {
+                    if (instruction.phase in shortcut) continue
+                    if (instruction.phase == LocalTaskPlan.Phase.Search && !navigationRecovered &&
+                        ScreenBrain.state.value.resolve(SemanticTarget(resourceId = pkg + ":id/entry", editable = true)) != null) {
+                        val title = task.steps.first { it.phase == LocalTaskPlan.Phase.Compose }.preconditions.first()
+                        // Never overwrite an existing draft in the requested conversation.
+                        if (ScreenBrain.state.value.resolve(title) != null) throw PlanStopped()
+                        run(R.string.local_opening_app) {
+                            if (AccessibilityController.foregroundPackage() != pkg) BuiltinToolResult.failure("UI_CHANGED", "Foreground changed")
+                            else AccessibilityController.executeKeyEvent(4)
+                        }
+                        awaitScreen { it.resolve(instruction.target!!) != null }
+                        navigationRecovered = true // At most one verified back-navigation, never a loop.
+                    }
                     if (instruction.action == LocalTaskPlan.Action.Approval) {
                         val decision = requireService<AgentControl>().decideApproval(ApprovalRequest.ToolExecution(
                             context.getString(R.string.local_send_message), "WhatsApp\n" + plan.recipient + "\n" + plan.content,
@@ -73,26 +89,31 @@ internal object LocalMessageExecutor {
                     }
                     run(label) {
                         if (instruction.target != null) awaitScreen { task.canExecute(instruction, it) }
+                        if (instruction.phase == LocalTaskPlan.Phase.Send) submissionAttempted = true
                         val result = when (instruction.action) {
                             LocalTaskPlan.Action.Launch -> launch.tool.invoke(BuiltinToolRequest("launch_app", "{\"app_name\":\"WhatsApp\"}"))
                             LocalTaskPlan.Action.Tap -> AccessibilityController.executeSemanticTarget(
                                 instruction.target!!, NodeAction.CLICK, expectedPackage = task.packageName, preconditions = instruction.preconditions)
                             LocalTaskPlan.Action.SetText -> AccessibilityController.executeSemanticTarget(
-                                instruction.target!!, NodeAction.SET_TEXT, instruction.text, expectedPackage = task.packageName)
+                                instruction.target!!, NodeAction.SET_TEXT, instruction.text, expectedPackage = task.packageName, preconditions = instruction.preconditions)
                             LocalTaskPlan.Action.Approval -> error("Approval is handled separately")
                         }
                         if (result.ok) awaitScreen { task.matches(instruction, it) }
                         result
                     }
+                    if (instruction.phase == LocalTaskPlan.Phase.Launch) shortcut = task.navigationShortcut(ScreenBrain.state.value)
                     if (instruction.phase == LocalTaskPlan.Phase.Send) sent = true
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: PlanStopped) { /* Stop, never guess/retry a partially composed or submitted message. */ }
-            AssistantMessage(listOf(ContentBlock.Text(context.getString(when {
+            val response = AssistantMessage(listOf(ContentBlock.Text(context.getString(when {
                 sent -> R.string.local_message_submitted
                 cancelled -> R.string.local_message_cancelled
+                submissionAttempted -> R.string.local_message_uncertain
                 else -> R.string.local_message_stopped
             }))), stopReason = StopReason.Stop)
+            if (!sent) throw com.niki914.okia.LocalTurnStopped(response, cancelled)
+            response
         }
     }
     private class PlanStopped : Exception()

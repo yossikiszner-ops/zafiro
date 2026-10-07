@@ -76,6 +76,39 @@ class RealOkiaTest {
     }
 
 
+    // Local failures/cancelled approvals retain their readable response without a fake success event.
+    @Test fun failedLocalActionHasFailureOutcomeWithoutCallingTheModel() = runTest {
+        var modelCalls = 0
+        val loop = FakeAgentLoop { _, _ -> modelCalls++; error("No model on a local failure") }
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), loop = loop, scope = testScope(testScheduler))
+        val events = mutableListOf<TurnEvent>()
+        val result = okia.send("send message", options = TurnOptions(localAction = LocalTurnAction {
+            throw LocalTurnStopped(AssistantMessage(listOf(ContentBlock.Text("Could not verify the conversation"))))
+        })) { events += it }
+        assertTrue(result is TurnResult.Failed)
+        assertEquals(0, modelCalls)
+        assertEquals(1, events.filterIsInstance<TurnEvent.TurnFailed>().size)
+        assertTrue(events.none { it is TurnEvent.TurnCompleted })
+        assertEquals(2, okia.export().entries.size)
+        val next = okia.send("next", options = TurnOptions(localAction = LocalTurnAction {
+            AssistantMessage(listOf(ContentBlock.Text("done")))
+        })) {}
+        assertTrue(next is TurnResult.Completed)
+        okia.close()
+    }
+    @Test fun rejectedLocalApprovalHasInterruptedOutcomeAndPersistsCancellation() = runTest {
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
+        val events = mutableListOf<TurnEvent>()
+        val result = okia.send("send message", options = TurnOptions(localAction = LocalTurnAction {
+            throw LocalTurnStopped(AssistantMessage(listOf(ContentBlock.Text("Cancelled"))), cancelled = true)
+        })) { events += it }
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), result)
+        assertTrue(events.none { it is TurnEvent.TurnCompleted })
+        assertEquals(1, events.filterIsInstance<TurnEvent.TurnAborted>().size)
+        assertEquals(2, okia.export().entries.size)
+        okia.close()
+    }
+
     // ── fixtures ───────────────────────────────────────────────────────────
 
     private fun user(text: String) = Message.User(listOf(ContentBlock.Text(text)))
