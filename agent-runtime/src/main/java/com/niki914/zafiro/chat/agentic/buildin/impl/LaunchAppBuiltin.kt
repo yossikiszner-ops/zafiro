@@ -101,10 +101,13 @@ class LaunchAppBuiltin : BuiltinTool() {
             data["is_system_app"] = JsonPrimitive(it.isSystemApp)
         }
         return when (event) {
-            LaunchEvent.Launched -> BuiltinToolResult.success(
-                message = "App launched.",
-                data = JsonObject(data),
-            )
+            LaunchEvent.Launched -> {
+                com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.observedPackage.value = packageName
+                BuiltinToolResult.success(
+                    message = "App launched.",
+                    data = JsonObject(data),
+                )
+            }
 
             is LaunchEvent.Failed -> BuiltinToolResult.failure(
                 code = "APP_LAUNCH_FAILED",

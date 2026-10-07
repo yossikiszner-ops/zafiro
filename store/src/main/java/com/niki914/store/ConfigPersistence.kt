@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.AtomicFile
 import java.io.File
 import java.io.FileOutputStream
+import org.json.JSONObject
 
 internal object ConfigPersistence {
 
@@ -13,12 +14,31 @@ internal object ConfigPersistence {
 
     fun readJson(context: Context, descriptor: StoreDescriptor): String? {
         val file = fileFor(context, descriptor)
-        return if (file.exists()) file.readText(Charsets.UTF_8) else null
+        if (!file.exists()) return null
+        val text = file.readText(Charsets.UTF_8)
+        if (!containsSecrets(descriptor)) return text
+        if (text.startsWith(SecretDocumentCipher.PREFIX)) {
+            return SecretDocumentCipher(AndroidConfigurationKey.get()).decrypt(descriptor.id, text)
+        }
+        // Migrate only valid existing JSON. Invalid input stays intact for the repository to diagnose.
+        if (text.isNotBlank() && runCatching { JSONObject(text) }.isSuccess) {
+            writeJson(context, descriptor, text)
+        }
+        return text
     }
 
     fun writeJson(context: Context, descriptor: StoreDescriptor, json: String) {
-        writeTextAtomically(fileFor(context, descriptor), json)
+        val text = if (containsSecrets(descriptor)) {
+            SecretDocumentCipher(AndroidConfigurationKey.get()).encrypt(descriptor.id, json)
+        } else json
+        writeTextAtomically(fileFor(context, descriptor), text)
     }
+
+    private fun containsSecrets(descriptor: StoreDescriptor): Boolean = descriptor.id in setOf(
+        StoreDescriptorRegistry.LLM_CONFIGS_ID,
+        StoreDescriptorRegistry.LOCAL_SETTINGS_ID,
+        StoreDescriptorRegistry.TOOLS_MCP_SERVERS_ID,
+    )
 
     private fun writeTextAtomically(target: File, text: String) {
         target.parentFile?.mkdirs()

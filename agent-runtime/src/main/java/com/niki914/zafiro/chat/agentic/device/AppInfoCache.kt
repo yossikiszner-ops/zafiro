@@ -1,5 +1,9 @@
 package com.niki914.zafiro.chat.agentic.device
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.os.SystemClock
+import android.util.LruCache
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -25,6 +29,9 @@ data class AppInfo(
      */
     val labels: Set<String> = setOf(appName),
 )
+
+/** Resolved from an installed package, never a bundled approximation of an app logo. */
+data class InstalledAppIdentity(val packageName: String, val label: String, val icon: Bitmap)
 
 sealed interface AppMatchResult {
     data class Found(val app: AppInfo) : AppMatchResult
@@ -80,6 +87,33 @@ class AppInfoCache(
 
     @Volatile
     private var initialized = false
+    @Volatile private var refreshedAt = 0L
+    private data class IdentityEntry(val updateTime: Long, val locale: String, val identity: InstalledAppIdentity)
+    private val identities = LruCache<String, IdentityEntry>(32)
+
+    suspend fun identity(packageName: String): InstalledAppIdentity? = withContext(Dispatchers.IO) {
+        try {
+            @Suppress("DEPRECATION")
+            val pkg = appContext.packageManager.getPackageInfo(packageName, 0)
+            val app = pkg.applicationInfo ?: return@withContext null
+            val locale = appContext.resources.configuration.locales.toLanguageTags()
+            identities.get(packageName)?.takeIf { it.updateTime == pkg.lastUpdateTime && it.locale == locale }
+                ?.let { return@withContext it.identity }
+            val drawable = app.loadIcon(appContext.packageManager)
+            val size = (48 * appContext.resources.displayMetrics.density).toInt().coerceIn(48, 192)
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            drawable.setBounds(0, 0, size, size)
+            drawable.draw(Canvas(bitmap))
+            val identity = InstalledAppIdentity(packageName, app.loadLabel(appContext.packageManager).toString(), bitmap)
+            identities.put(packageName, IdentityEntry(pkg.lastUpdateTime, locale, identity))
+            identity
+        } catch (_: PackageManager.NameNotFoundException) {
+            identities.remove(packageName)
+            null
+        } catch (_: SecurityException) {
+            null
+        }
+    }
 
     suspend fun findByPackageName(packageName: String): AppInfo? {
         ensureInitialized()
@@ -117,17 +151,19 @@ class AppInfoCache(
         initMutex.withLock {
             loadInstalledApps()
             initialized = true
+            refreshedAt = SystemClock.elapsedRealtime()
         }
     }
 
     private suspend fun ensureInitialized() {
-        if (initialized) {
+        if (initialized && SystemClock.elapsedRealtime() - refreshedAt < 60_000) {
             return
         }
         initMutex.withLock {
-            if (!initialized) {
+            if (!initialized || SystemClock.elapsedRealtime() - refreshedAt >= 60_000) {
                 loadInstalledApps()
                 initialized = true
+                refreshedAt = SystemClock.elapsedRealtime()
             }
         }
     }

@@ -16,7 +16,7 @@ class I18nAlignmentTest {
     private val localeFiles = listOf(
         "values/strings.xml",
         "values-en/strings.xml",
-        "values-he/strings.xml",
+        "values-iw/strings.xml",
     )
 
     private fun stringNames(relativePath: String): Set<String> {

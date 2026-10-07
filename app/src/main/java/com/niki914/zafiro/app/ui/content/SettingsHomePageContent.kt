@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.voice.GlassAppearanceSettings
+import com.niki914.zafiro.app.overlay.AgentCursorSettings
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,8 @@ private fun SettingsHomePageContentBody(
     uiState: SettingsUiState,
     onOpenGroup: (ZafiroSettingsGroup) -> Unit,
 ) {
+    var showCursor by remember { mutableStateOf(false) }
+    if (showCursor) AgentCursorSettings { showCursor = false }
     var showGlass by remember { mutableStateOf(false) }
     if (showGlass) GlassAppearanceSettings { showGlass = false }
     val groupsById = uiState.sections
@@ -54,7 +57,11 @@ private fun SettingsHomePageContentBody(
         spec = settingsHomePageSpec(uiState),
         onAction = { action ->
             when (action) {
-                is SettingsRowAction.Navigate -> if (action.id == "zafiro-glass") showGlass = true else groupsById[action.id]?.let(onOpenGroup)
+                is SettingsRowAction.Navigate -> when (action.id) {
+                    "zafiro-glass" -> showGlass = true
+                    "zafiro-cursor" -> showCursor = true
+                    else -> groupsById[action.id]?.let(onOpenGroup)
+                }
                 is SettingsRowAction.Click -> Unit
                 is SettingsRowAction.ToggleChanged -> Unit
             }
@@ -68,9 +75,12 @@ private fun settingsHomePageSpec(
 ): SettingsPageSpec {
     return SettingsPageSpec(
         sections = listOf(SettingsSectionSpec(
-            title = "ZAFIRO GLASS",
+            title = "Zafiro",
             layout = SettingsSectionLayout.GroupedCard,
-            rows = listOf(SettingsRowSpec.Navigation(id = "zafiro-glass", title = stringResource(R.string.glass_studio))),
+            rows = listOf(
+                SettingsRowSpec.Navigation(id = "zafiro-glass", title = stringResource(R.string.glass_studio)),
+                SettingsRowSpec.Navigation(id = "zafiro-cursor", title = stringResource(R.string.cursor_settings)),
+            ),
         )) + uiState.sections.map { section ->
             SettingsSectionSpec(
                 title = stringResource(section.titleRes),

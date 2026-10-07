@@ -1,5 +1,9 @@
 package com.niki914.zafiro.app.overlay
 
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.asImageBitmap
+import com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
+import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -303,7 +307,14 @@ object FloatingBallOverlayManager {
                         seedColor = seed,
                     ) {
                         val uiState by vmInstance.uiStateFlow.collectAsState()
+                        val observedPackage by AccessibilityController.observedPackage.collectAsState()
+                        val identity by produceState<com.niki914.zafiro.chat.agentic.device.InstalledAppIdentity?>(null, observedPackage) {
+                            value = null
+                            value = observedPackage?.let { AppInfoProvider.cache().identity(it) }
+                        }
                         ZafiroGlass(
+                            applicationIcon = identity?.icon?.asImageBitmap(),
+                            applicationLabel = identity?.label,
                             phase = com.niki914.zafiro.app.voice.VoiceActivity.phase.collectAsState().value ?: uiState.glassPhase,
                             appearance = com.niki914.zafiro.app.voice.GlassPreferences.appearance.collectAsState().value,
                             reducedMotion = com.niki914.zafiro.app.voice.GlassPreferences.reducedMotion.collectAsState().value,

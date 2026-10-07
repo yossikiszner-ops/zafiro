@@ -5,6 +5,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -90,6 +93,8 @@ fun ZafiroGlass(
     reducedMotion: Boolean = false,
     expanded: Boolean = false,
     onExpandedChange: (Boolean) -> Unit = {},
+    applicationIcon: ImageBitmap? = null,
+    applicationLabel: String? = null,
 ) {
     val expansion = remember { Animatable(if (expanded) 1f else 0f) }
     var drag by remember { mutableFloatStateOf(0f) }
@@ -150,7 +155,10 @@ fun ZafiroGlass(
             },
         contentAlignment = Alignment.Center
     ) {
-        if (appearance.presence == ZafiroPresenceStyle.Invisible || appearance.presenceIntensity <= 0f) {
+        if (applicationIcon != null && applicationLabel != null) {
+            Image(applicationIcon, contentDescription = applicationLabel,
+                modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)))
+        } else if (appearance.presence == ZafiroPresenceStyle.Invisible || appearance.presenceIntensity <= 0f) {
             Text(label, color = Color.White, style = MaterialTheme.typography.labelMedium, maxLines = 1)
         } else ZafiroPresence(appearance.presence, phase, accent, appearance.presenceIntensity)
     }

@@ -54,4 +54,9 @@
     <string name="glass_presence_orbital">Orbital core</string>
     <string name="glass_presence_ink">Ink drop</string>
     <string name="glass_presence_invisible">Disabled</string>
+    <string name="cursor_settings">Agent Cursor</string>
+    <string name="cursor_show">Show Agent Cursor</string>
+    <string name="cursor_intensity">Cursor intensity</string>
+    <string name="cursor_speed">Motion speed</string>
+    <string name="cursor_feedback">Action feedback</string>
 </resources>

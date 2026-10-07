@@ -54,4 +54,9 @@
     <string name="glass_presence_orbital">ליבה מסלולית</string>
     <string name="glass_presence_ink">טיפת דיו</string>
     <string name="glass_presence_invisible">כבויה</string>
+    <string name="cursor_settings">סמן הסוכן</string>
+    <string name="cursor_show">הצגת סמן הסוכן</string>
+    <string name="cursor_intensity">עוצמת הסמן</string>
+    <string name="cursor_speed">מהירות תנועה</string>
+    <string name="cursor_feedback">משוב לפעולות</string>
 </resources>

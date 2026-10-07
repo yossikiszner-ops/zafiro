@@ -8,7 +8,7 @@ Scope: Android application sources, manifests, direct Gradle dependencies, provi
 - Voice uses the official Gemini origin only, with an explicitly configured Google credential. It disables redirects, sends completed WAV utterances for transcription, and sends exact reply chunks plus minimal delivery instructions for speech. It does not send conversation history to TTS or save recordings.
 - Microphone consent uses the existing PermissionManager system dialog/settings flow. It never uses root or Shizuku to silently grant microphone access. Recording stops when the conversation screen leaves the foreground or after 30 seconds idle.
 - Local executable tools require the existing human approval UI while the lock is enabled. Approved scripts are executable code and can use independent network clients; this policy is not a sandbox or device firewall.
-- Android backup is disabled to reduce accidental export of provider credentials and local conversation/memory data. Credentials continue to use the project's existing configuration store; this change does not claim hardware-backed encryption.
+- Android backup is disabled to reduce accidental export of provider credentials and local conversation/memory data. The existing configuration store now encrypts provider configurations, legacy local settings and MCP server documents using AES-256-GCM with an Android Keystore key. The store ID is authenticated to prevent swapping ciphertext between domains. Valid plaintext documents are migrated atomically on read; a key or authentication failure never falls back to writing plaintext. Hardware-backed key storage is not guaranteed on every device.
 - The voice settings screen shows allowed managed destinations and the scope/limitations of this policy. Disabling the policy is explicit and persisted locally.
 
 ## Existing network and permission surfaces
@@ -25,4 +25,4 @@ Scope: Android application sources, manifests, direct Gradle dependencies, provi
 
 Exact origin/scheme/port policy, permission consent chains, tool projection, context boundaries, model discovery selection, PCM/WAV processing and hierarchical playback cancellation have JVM tests. Android CI builds the integrated app and runs the repository tests.
 
-A full device firewall, per-integration operation-level permission grants, encrypted credential migration, packet capture, continuous background microphone, and signed release distribution are not implemented by this milestone. Do not describe this policy as blocking all phone traffic or arbitrary approved scripts.
+A full device firewall, per-integration operation-level permission grants, packet capture, continuous background microphone, and signed release distribution are not implemented by this milestone. Do not describe this policy as blocking all phone traffic or arbitrary approved scripts.
