@@ -29,9 +29,15 @@ object LocalIntelligence {
         return when (val action = DirectCommand.parse(command)) {
             is DirectCommand.Open -> source.contains(action.app.lowercase())
             DirectCommand.Back -> Regex("back|previous|אחורה|קודם").containsMatchIn(source)
+            DirectCommand.Home -> Regex("home|מסך הבית").containsMatchIn(source)
+            is DirectCommand.OpenSettings -> when (action.screen) {
+                DirectCommand.SettingsScreen.Bluetooth -> Regex("bluetooth|בלוטוס").containsMatchIn(source)
+                DirectCommand.SettingsScreen.BatterySaver -> Regex("battery|סוללה").containsMatchIn(source)
+            }
             is DirectCommand.Volume -> Regex("volume|ווליום|עוצמת הקול").containsMatchIn(source)
             null -> LocalMessagePlan.parse(command)?.let {
-                input.contains(it.recipient, true) && input.contains(it.content, true) &&
+                Regex("(?:\\bsend\\b|\\btell\\b|שלח)", RegexOption.IGNORE_CASE).containsMatchIn(input) &&
+                    input.contains(it.recipient, true) && input.contains(it.content, true) &&
                     Regex("whatsapp|וואטסאפ|ואטסאפ", RegexOption.IGNORE_CASE).containsMatchIn(input)
             } == true
         }

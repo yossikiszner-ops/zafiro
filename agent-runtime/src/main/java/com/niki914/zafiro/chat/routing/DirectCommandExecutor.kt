@@ -29,6 +29,8 @@ internal object DirectCommandExecutor {
                     when (command) {
                         is DirectCommand.Open -> put("app_name", alias(command.app))
                         DirectCommand.Back -> { put("operation", "key"); put("code", 4) }
+                        DirectCommand.Home -> { put("operation", "key"); put("code", 3) }
+                        is DirectCommand.OpenSettings -> { put("operation", "settings"); put("screen", command.screen.name) }
                         is DirectCommand.Volume -> { put("operation", "volume"); put("direction", command.direction) }
                     }
                 }.toString())
@@ -38,13 +40,15 @@ internal object DirectCommandExecutor {
                 when (command) {
                     is DirectCommand.Open -> tool.tool.invoke(BuiltinToolRequest(name, call.argumentsJson))
                     DirectCommand.Back -> AccessibilityController.executeKeyEvent(4)
+                    DirectCommand.Home -> AccessibilityController.executeKeyEvent(3)
+                    is DirectCommand.OpenSettings -> openSettings(context, command.screen)
                     is DirectCommand.Volume -> adjustVolume(context, command.direction)
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { BuiltinToolResult.failure("ACTION_FAILED", "Android action failed") }
             var verified = false
             if (result.ok) {
-                if (command is DirectCommand.Open) {
+                if (command is DirectCommand.Open || command is DirectCommand.OpenSettings) {
                     val pkg = result.data["package_name"]?.jsonPrimitive?.contentOrNull
                     verified = pkg != null && withTimeoutOrNull(1_200) {
                         while (AccessibilityController.foregroundPackage() != pkg) {
@@ -63,11 +67,25 @@ internal object DirectCommandExecutor {
                 !result.ok -> R.string.direct_action_failed
                 command is DirectCommand.Open && verified -> R.string.direct_app_opened
                 command is DirectCommand.Open -> R.string.direct_app_requested
+                command is DirectCommand.OpenSettings && verified -> R.string.direct_app_opened
+                command is DirectCommand.OpenSettings -> R.string.direct_app_requested
+                command is DirectCommand.Home -> R.string.direct_home_requested
                 command is DirectCommand.Volume -> R.string.direct_volume_updated
                 else -> R.string.direct_back_performed
             })
             AssistantMessage(listOf(ContentBlock.Text(message)), stopReason = StopReason.Stop)
         }
+    }
+    private fun openSettings(context: Context, screen: DirectCommand.SettingsScreen): BuiltinToolResult {
+        val action = when (screen) {
+            DirectCommand.SettingsScreen.Bluetooth -> android.provider.Settings.ACTION_BLUETOOTH_SETTINGS
+            DirectCommand.SettingsScreen.BatterySaver -> android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS
+        }
+        val intent = android.content.Intent(action).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val activity = context.packageManager.resolveActivity(intent, 0)
+            ?: return BuiltinToolResult.failure("SCREEN_UNAVAILABLE", "Settings screen unavailable")
+        context.startActivity(intent)
+        return BuiltinToolResult.success("Settings navigation requested", data = buildJsonObject { put("package_name", activity.activityInfo.packageName) })
     }
     private fun adjustVolume(context: Context, direction: Int): BuiltinToolResult {
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -86,6 +104,8 @@ internal object DirectCommandExecutor {
         "כרום" -> "Chrome"
         "ספוטיפיי" -> "Spotify"
         "יוטיוב" -> "YouTube"
+        "מצלמה" -> "Camera"
+        "הגדרות" -> "Settings"
         else -> name
     }
 }

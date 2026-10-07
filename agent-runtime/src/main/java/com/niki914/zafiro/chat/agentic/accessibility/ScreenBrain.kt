@@ -14,6 +14,7 @@ object ScreenBrain {
     private val current = MutableStateFlow(ScreenState.Empty)
     val state: StateFlow<ScreenState> = current.asStateFlow()
     val graph = ScreenGraph()
+    @Volatile var activeTurn = false
     private val handler by lazy { Handler(Looper.getMainLooper()) }
     private var rootProvider: (() -> AccessibilityNodeInfo?)? = null
     private var pending = false
@@ -41,7 +42,7 @@ object ScreenBrain {
     fun onUiEvent() {
         if (rootProvider == null || pending) return
         pending = true
-        handler.postDelayed(update, 80) // A fixed window, not starvation-prone trailing debounce.
+        handler.postDelayed(update, if (activeTurn) 80 else 1000) // A fixed window, not starvation-prone trailing debounce.
     }
     @Synchronized fun key(screen: ScreenState): ScreenGraph.Key? {
         val pkg = screen.packageName ?: return null
@@ -68,7 +69,7 @@ object ScreenBrain {
                     if (node.isPassword) "" else node.text?.toString().orEmpty().take(512),
                     if (node.isPassword) "" else node.contentDescription?.toString().orEmpty().take(256),
                     node.isClickable, node.isEditable, node.isEnabled, node.isFocused,
-                    listOf(bounds.left, bounds.top, bounds.right, bounds.bottom))
+                    listOf(bounds.left, bounds.top, bounds.right, bounds.bottom), node.isScrollable, node.isSelected)
             }
             for (i in 0 until node.childCount.coerceAtMost(128)) {
                 node.getChild(i)?.let { child ->

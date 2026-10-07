@@ -17,5 +17,10 @@ class LocalMessagePlanTest {
         assertNull(LocalMessagePlan.parse("שלח לאמא ולאבא בוואטסאפ לילה טוב"))
         assertNull(LocalMessagePlan.parse("delete my messages"))
         assertNull(LocalMessagePlan.parse("שלח לאמא בוואטסאפ"))
+        assertNull(LocalMessagePlan.parse("שלח לאמא ולאבא לילה טוב"))
+    }
+    @Test fun familyShortcutDoesNotConsumeTheExplicitApplicationAsMessageText() {
+        assertEquals(LocalMessagePlan("אמא", "לילה טוב"), LocalMessagePlan.parse("שלח לאמא לילה טוב"))
+        assertEquals(LocalMessagePlan("אמא", "לילה טוב"), LocalMessagePlan.parse("תשלח לאמא בוואטסאפ לילה טוב"))
     }
 }

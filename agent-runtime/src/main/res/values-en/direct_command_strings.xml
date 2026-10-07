@@ -7,4 +7,5 @@
     <string name="direct_app_requested">Android accepted the launch request. I could not verify the open screen.</string>
     <string name="direct_volume_updated">Media volume updated.</string>
     <string name="direct_back_performed">Android accepted the Back action.</string>
+    <string name="direct_home_requested">Home navigation requested.</string>
 </resources>

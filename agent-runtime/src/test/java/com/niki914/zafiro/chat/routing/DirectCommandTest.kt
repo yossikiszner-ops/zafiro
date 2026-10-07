@@ -9,10 +9,14 @@ class DirectCommandTest {
         assertEquals(DirectCommand.Open("whatsapp"), DirectCommand.parse("Please open WhatsApp!"))
         assertEquals(DirectCommand.Open("וואטסאפ"), DirectCommand.parse("תפתח לי את וואטסאפ"))
         assertEquals(DirectCommand.Back, DirectCommand.parse("חזור אחורה"))
+        assertEquals(DirectCommand.Back, DirectCommand.parse("תחזור למסך הקודם"))
+        assertEquals(DirectCommand.Home, DirectCommand.parse("תחזור למסך הבית"))
+        assertEquals(DirectCommand.OpenSettings(DirectCommand.SettingsScreen.Bluetooth), DirectCommand.parse("תפתח הגדרות ותיכנס לבלוטוס"))
     }
     @Test fun compoundAndSensitiveMessagingRequestsRequireTheAgent() {
         assertNull(DirectCommand.parse("open WhatsApp and send mom good night"))
         assertNull(DirectCommand.parse("פתח וואטסאפ ושלח לאמא לילה טוב"))
+        assertNull(DirectCommand.parse("תפתח ספוטיפיי ותשים מוזיקה"))
         assertNull(DirectCommand.parse("שלח הודעת וואטסאפ לאמא עם המילים לילה טוב"))
     }
     @Test fun webAndAmbiguousNavigationAreNotLaunchedAsApps() {

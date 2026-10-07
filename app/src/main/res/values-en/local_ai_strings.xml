@@ -21,7 +21,7 @@
     <string name="local_ai_benchmark">Run device benchmark / warm model</string>
     <string name="local_ai_benchmark_running">Loading and testing sample commands…</string>
     <string name="local_ai_benchmark_failed">Benchmark unavailable. Check available RAM, model integrity and device support.</string>
-    <string name="local_ai_benchmark_result">Load: %1$d ms; average inference: %2$d ms; first output: %3$d ms; native heap: %4$d MiB; command samples: %5$d/%6$d. Not a phone-task success benchmark.</string>
+    <string name="local_ai_benchmark_result">Load: %1$d ms; average inference: %2$d ms; first output: %3$d ms; native heap: %4$d MiB; command samples: %5$d/%6$d. Process PSS: %7$d MiB; decode: %8$.1f tokens/s (0 = unavailable). Not a phone-task success benchmark.</string>
     <string name="local_ai_wifi">Download on Wi-Fi only</string>
     <string name="local_ai_wifi_required">Connect to Wi-Fi or disable the Wi-Fi-only preference.</string>
 </resources>

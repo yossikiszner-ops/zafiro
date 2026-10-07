@@ -12,6 +12,8 @@ data class ScreenElement(
     val enabled: Boolean,
     val focused: Boolean,
     val bounds: List<Int>,
+    val scrollable: Boolean = false,
+    val selected: Boolean = false,
 )
 
 data class ScreenState(
@@ -71,6 +73,7 @@ class ScreenGraph(private val capacity: Int = 64) {
             screens.containsKey(from) && screens.containsKey(to)) edges.getOrPut(from) { linkedSetOf() }.add(to)
     }
     @Synchronized fun path(from: Key, to: Key): List<Key>? {
+        if (!screens.containsKey(from) || !screens.containsKey(to)) return null
         val queue = ArrayDeque<List<Key>>()
         val visited = mutableSetOf(from)
         queue.add(listOf(from))

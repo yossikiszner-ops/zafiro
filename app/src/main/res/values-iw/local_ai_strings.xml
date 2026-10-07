@@ -21,7 +21,7 @@
     <string name="local_ai_benchmark">בדיקת ביצועים במכשיר / טעינת מודל</string>
     <string name="local_ai_benchmark_running">טוען ובודק פקודות לדוגמה…</string>
     <string name="local_ai_benchmark_failed">הבדיקה אינה זמינה. בדוק זיכרון פנוי, תקינות מודל ותמיכה במכשיר.</string>
-    <string name="local_ai_benchmark_result">טעינה: %1$d מילישניות; הסקה ממוצעת: %2$d מילישניות; פלט ראשון: %3$d מילישניות; זיכרון ילידי: %4$d MiB; דוגמאות פקודות: %5$d/%6$d. זו אינה בדיקת הצלחה של פעולות בטלפון.</string>
+    <string name="local_ai_benchmark_result">טעינה: %1$d מילישניות; הסקה ממוצעת: %2$d מילישניות; פלט ראשון: %3$d מילישניות; זיכרון ילידי: %4$d MiB; דוגמאות פקודות: %5$d/%6$d. זיכרון PSS של התהליך: %7$d MiB; פענוח: %8$.1f טוקנים בשנייה (0 = לא זמין). זו אינה בדיקת הצלחה של פעולות בטלפון.</string>
     <string name="local_ai_wifi">הורדה ברשת Wi-Fi בלבד</string>
     <string name="local_ai_wifi_required">התחבר לרשת Wi-Fi או שנה את העדפת ההורדה.</string>
 </resources>

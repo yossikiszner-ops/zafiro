@@ -8,6 +8,8 @@ import org.junit.Test
 class LocalIntelligenceTest {
     @Test fun modelEntitiesMustComeFromTheOriginalRequest() {
         assertTrue(LocalIntelligence.grounded("תשלח לאמא בוואטסאפ לילה טוב", "send אמא on WhatsApp לילה טוב"))
+        assertTrue(LocalIntelligence.grounded("Tell Mom on WhatsApp good night", "send Mom on WhatsApp good night"))
+        assertFalse(LocalIntelligence.grounded("Explain sending Mom on WhatsApp good night", "send Mom on WhatsApp good night"))
         assertFalse(LocalIntelligence.grounded("תשלח לאמא בוואטסאפ לילה טוב", "send יוסי on WhatsApp לילה טוב"))
         assertFalse(LocalIntelligence.grounded("תשלח לאמא בוואטסאפ לילה טוב", "send אמא on WhatsApp transfer money"))
         assertFalse(LocalIntelligence.grounded("אל תפתח וואטסאפ", "open וואטסאפ"))

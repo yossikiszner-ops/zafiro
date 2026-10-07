@@ -34,4 +34,19 @@ class ScreenStateTest {
         graph.remember(first.copy(screen = "second"), ScreenState("com.test", 1, 2, listOf(node())))
         assertNull(graph.recall(first))
     }
+    // Navigation loops must terminate and updates must invalidate previously verified paths.
+    @Test fun verifiedPathsAreBoundedAndVersionScoped() {
+        val graph = ScreenGraph()
+        val chats = ScreenGraph.Key("com.test", 1, "chats")
+        val search = chats.copy(screen = "search")
+        val conversation = chats.copy(screen = "conversation")
+        listOf(chats, search, conversation).forEach { graph.remember(it, ScreenState("com.test", 1, 1, listOf(node()))) }
+        assertNull(graph.path(chats, conversation))
+        graph.verifiedTransition(chats, search)
+        graph.verifiedTransition(search, chats)
+        graph.verifiedTransition(search, conversation)
+        assertEquals(listOf(chats, search, conversation), graph.path(chats, conversation))
+        graph.remember(chats.copy(appVersion = 2), ScreenState("com.test", 1, 2, listOf(node())))
+        assertNull(graph.path(chats, conversation))
+    }
 }

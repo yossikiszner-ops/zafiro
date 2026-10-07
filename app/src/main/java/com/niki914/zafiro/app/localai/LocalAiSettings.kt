@@ -46,7 +46,7 @@ fun LocalAiSettings(onDismiss: () -> Unit) {
                     Text(stringResource(R.string.local_ai_candidate_info, artifact.bytes / (1024 * 1024)))
                     download.status?.let { Text(stringResource(it)) }
                     download.benchmark?.let { result -> Text(stringResource(R.string.local_ai_benchmark_result,
-                        result.loadMs, result.warmMs, result.firstOutputMs, result.nativeHeapMiB, result.correct, result.total)) }
+                        result.loadMs, result.warmMs, result.firstOutputMs, result.nativeHeapMiB, result.correct, result.total, result.processPssMiB, result.decodeTokensPerSecond)) }
                     if (download.downloading) LinearProgressIndicator(
                         progress = { (download.completed.toFloat() / artifact.bytes).coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth())

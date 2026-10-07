@@ -462,6 +462,7 @@ object LLMController {
             )
 
             turnActive.value = true
+            com.niki914.zafiro.chat.agentic.accessibility.ScreenBrain.activeTurn = true
             val startedAtMs = System.currentTimeMillis()
             var streamErrorReported = false
             var streamTerminated = false
@@ -505,7 +506,7 @@ object LLMController {
                 } else {
                     query
                 }
-                val routeStarted = android.os.SystemClock.elapsedRealtime()
+                val routeStarted = System.nanoTime()
                 val eligibleLocal = images.isEmpty() && files.isEmpty()
                 var localAction = if (eligibleLocal) {
                     com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
@@ -526,7 +527,7 @@ object LLMController {
                 }
                 com.niki914.zafiro.chat.routing.LocalIntelligence.diagnostics.value =
                     com.niki914.zafiro.chat.routing.RouteDiagnostics(routeName,
-                        android.os.SystemClock.elapsedRealtime() - routeStarted,
+                        (System.nanoTime() - routeStarted) / 1_000_000,
                         if (localAction == null) "No confident supported local plan" else null)
                 // 终态以返回值承载（TurnResult）；onEvent 只承担流式中间过程。
                 val result = try {
@@ -646,6 +647,7 @@ object LLMController {
             }
         } finally {
             turnActive.value = false
+            com.niki914.zafiro.chat.agentic.accessibility.ScreenBrain.activeTurn = false
             AccessibilityController.onTurnEnd()
         }
     }.flowOn(Dispatchers.IO)

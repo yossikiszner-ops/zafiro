@@ -112,6 +112,7 @@ object AccessibilityController {
 
     /** Reset pointer state and hide overlay at end of an agent turn. */
     fun onTurnEnd() {
+        ScreenBrain.activeTurn = false
         observedPackage.value = null
         pointerShown = false
         pointerOverlay?.hide()

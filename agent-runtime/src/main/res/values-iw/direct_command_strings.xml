@@ -7,4 +7,5 @@
     <string name="direct_app_requested">Android קיבל את בקשת הפתיחה. לא הצלחתי לאמת את המסך שנפתח.</string>
     <string name="direct_volume_updated">עוצמת המדיה עודכנה.</string>
     <string name="direct_back_performed">Android קיבל את פעולת החזרה.</string>
+    <string name="direct_home_requested">נשלחה בקשה לחזור למסך הבית.</string>
 </resources>

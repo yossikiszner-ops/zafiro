@@ -16,9 +16,11 @@ import kotlinx.serialization.json.*
 import java.io.File
 
 data class LocalBenchmark(val loadMs: Long, val warmMs: Long, val firstOutputMs: Long,
-    val nativeHeapMiB: Long, val correct: Int, val total: Int)
+    val nativeHeapMiB: Long, val correct: Int, val total: Int,
+    val processPssMiB: Long, val decodeTokensPerSecond: Double)
 
 /** A single opt-in engine, no tools and no Android execution. Cold models never delay a user request. */
+@OptIn(ExperimentalApi::class)
 object LocalCommandRuntime {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -55,6 +57,8 @@ object LocalCommandRuntime {
             val file = File(context.noBackupFilesDir, "local-models/${artifact.id}.litertlm")
             check(artifact.verify(file)) { "INTEGRITY" }
             val start = SystemClock.elapsedRealtime()
+            Engine.setNativeMinLogSeverity(LogSeverity.ERROR)
+            ExperimentalFlags.enableBenchmark = true
             val candidate = Engine(EngineConfig(file.path, Backend.CPU(threadCount = 2), maxNumTokens = 1024,
                 cacheDir = File(context.cacheDir, "local-ai").apply { mkdirs() }.path))
             try {
@@ -64,16 +68,20 @@ object LocalCommandRuntime {
                 var correct = 0
                 var totalMs = 0L
                 var firstMs = 0L
+                var peakPss = 0L
+                var decodeSpeed = 0.0
                 for ((input, expected) in fixtures) {
                     currentCoroutineContext().ensureActive()
                     val result = withTimeoutOrNull(8_000) { infer(candidate, input) }
-                    if (result?.first?.equals(expected, true) == true) correct++
-                    totalMs += result?.second ?: 8_000
-                    firstMs += result?.third ?: 8_000
+                    if (result?.command?.equals(expected, true) == true) correct++
+                    totalMs += result?.elapsedMs ?: 8_000
+                    firstMs += result?.firstMs ?: 8_000
+                    peakPss = maxOf(peakPss, Debug.MemoryInfo().also { Debug.getMemoryInfo(it) }.totalPss.toLong())
+                    decodeSpeed += result?.decodeSpeed ?: 0.0
                 }
                 reliability = correct.toDouble() / fixtures.size
                 val result = LocalBenchmark(loadMs, totalMs / fixtures.size, firstMs / fixtures.size,
-                    Debug.getNativeHeapAllocatedSize() / (1024 * 1024), correct, fixtures.size)
+                    Debug.getNativeHeapAllocatedSize() / (1024 * 1024), correct, fixtures.size, peakPss / 1024, decodeSpeed / fixtures.size)
                 if (reliability < 0.98 || result.warmMs > 1500) closeLocked() else scheduleUnload()
                 result
             } catch (error: Throwable) {
@@ -88,12 +96,13 @@ object LocalCommandRuntime {
         return try {
             val active = engine ?: return null
             if (reliability < 0.98) return null
-            val output = withTimeoutOrNull(1500) { infer(active, input) }?.first ?: return null
+            val output = withTimeoutOrNull(1500) { infer(active, input) }?.command ?: return null
             scheduleUnload()
             if (output == "GEMINI") null else LocalInterpretation(output, reliability)
         } finally { mutex.unlock() }
     }
-    private suspend fun infer(active: Engine, input: String): Triple<String, Long, Long> {
+    private data class InferenceOutput(val command: String, val elapsedMs: Long, val firstMs: Long, val decodeSpeed: Double)
+    private suspend fun infer(active: Engine, input: String): InferenceOutput {
         val conversation = active.createConversation(ConversationConfig(systemInstruction = Contents.of(instruction),
             samplerConfig = SamplerConfig(1, 1.0, 0.0), automaticToolCalling = false,
             maxOutputToken = 160, thinkingConfig = ThinkingConfig(false, 0), enableResponseFormat = true))
@@ -108,7 +117,8 @@ object LocalCommandRuntime {
             }
             val command = Json.parseToJsonElement(text.toString()).jsonObject["command"]?.jsonPrimitive?.content
                 ?: "GEMINI"
-            return Triple(command, SystemClock.elapsedRealtime() - start, first.coerceAtLeast(0))
+            val speed = runCatching { conversation.getBenchmarkInfo().lastDecodeTokensPerSecond }.getOrDefault(0.0)
+            return InferenceOutput(command, SystemClock.elapsedRealtime() - start, first.coerceAtLeast(0), speed)
         } finally { runCatching { conversation.cancelProcess() }; conversation.close() }
     }
 }
