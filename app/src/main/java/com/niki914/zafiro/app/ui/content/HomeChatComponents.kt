@@ -428,6 +428,7 @@ fun LiquidChatComposer(
     pendingImages: List<HomeChatImage> = emptyList(),
     pendingFiles: List<HomeChatFile> = emptyList(),
     onAttachImageClick: () -> Unit = {},
+    voiceContent: @Composable () -> Unit = {},
 ) {
     val canSend = !isGenerating &&
             (value.isNotBlank() || pendingImages.isNotEmpty() || pendingFiles.isNotEmpty())
@@ -518,10 +519,11 @@ fun LiquidChatComposer(
             expandedLayout = expanded,
             expandedActionsRow = {
                 attachButton()
+                voiceContent()
                 sendButton()
             },
             modifier = modifier.fillMaxWidth(),
-            leadingContent = { attachButton() },
+            leadingContent = { Row { attachButton(); voiceContent() } },
             trailingContent = { sendButton() },
         )
 }

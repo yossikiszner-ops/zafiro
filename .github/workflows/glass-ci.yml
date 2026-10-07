@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [ main ]
   push:
-    branches: [ "feat/zafiro-glass-v2", "feat/zafiro-complete-upgrade" ]
+    branches: [ "feat/zafiro-glass-v2", "feat/zafiro-complete-upgrade", "feat/zafiro-1.6-integration" ]
 permissions:
   contents: read
 

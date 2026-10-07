@@ -63,7 +63,7 @@ class PermissionManagerImpl : PermissionManager {
     )
 
     override fun status(permission: Permission): PermissionState =
-        engine.status(permission)
+        if (permission == Permission.MICROPHONE) TargetStatus.query(app, permission, accessibilityService) else engine.status(permission)
 
     override suspend fun request(permission: Permission): PermissionResult =
         engine.request(permission, defaultChain(permission))

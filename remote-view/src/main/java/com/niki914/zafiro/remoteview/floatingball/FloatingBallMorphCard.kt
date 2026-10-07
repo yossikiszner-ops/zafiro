@@ -139,8 +139,6 @@ fun FloatingBallMorphCard(
                     animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
                 )
                 onCollapseFinished()
-            } else {
-                onBallAlphaChanged(1f)
             }
         }
     }

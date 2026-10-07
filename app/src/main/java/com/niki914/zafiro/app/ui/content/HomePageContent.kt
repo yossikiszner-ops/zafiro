@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -44,7 +45,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -94,7 +97,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.BaseTheme
-import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.ReportTitleBarCollapsed
@@ -126,6 +128,7 @@ import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.api.model.ApprovalDecision
 import com.niki914.zafiro.api.model.ApprovalRequest
 import com.niki914.zafiro.repo.UpdateCheckHolder
+import com.niki914.zafiro.repo.UpdateCheckResult
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -150,7 +153,7 @@ private const val PHOTO_PICK_MAX_ITEMS = 10
 fun HomePageContent(
     selectedConversationId: String?,
     onConversationSelectionConsumed: (String) -> Unit,
-    onActiveConversationChanged: (String?, String?) -> Unit,
+    onActiveConversationChanged: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -268,11 +271,8 @@ fun HomePageContent(
         latestViewModel.sendIntent(HomeChatIntent.LoadConversation(id))
         latestOnConversationSelectionConsumed(id)
     }
-    LaunchedEffect(uiState.currentConversationId, uiState.currentConversationTitle) {
-        latestOnActiveConversationChanged(
-            uiState.currentConversationId,
-            uiState.currentConversationTitle,
-        )
+    LaunchedEffect(uiState.currentConversationId) {
+        latestOnActiveConversationChanged(uiState.currentConversationId)
     }
 
     val pageChromeContribution = remember(
@@ -405,23 +405,13 @@ fun HomePageContent(
     )
 
     var showUpdateInstaller by remember { mutableStateOf(false) }
-    if (showUpdateInstaller) AppUpdateSettings { showUpdateInstaller = false; UpdateCheckHolder.dismiss() }
+    if (showUpdateInstaller) AppUpdateSettings { showUpdateInstaller = false }
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
-    val uriHandler = LocalUriHandler.current
-    val remoteVersion = updateCheckResult?.remoteVersion.orEmpty()
-    val releaseUrl = updateCheckResult?.releaseUrl.orEmpty()
-    ConfirmationLiquidDialog(
-        visible = updateCheckResult?.hasUpdate == true && !showUpdateInstaller,
-        onDismissRequest = { UpdateCheckHolder.dismiss() },
-        title = stringResource(R.string.update_dialog_title),
-        text = stringResource(R.string.update_dialog_text, remoteVersion),
-        positiveButtonText = stringResource(R.string.update_dialog_confirm),
-        negativeButtonText = stringResource(R.string.update_dialog_cancel),
-        onPositiveClick = {
-            showUpdateInstaller = true
-        },
-        onNegativeClick = { UpdateCheckHolder.dismiss() },
-        dismissOnBackgroundTap = false,
+    val dismissUpdateScope = rememberCoroutineScope()
+    UpdateAvailableDialog(
+        update = updateCheckResult.takeUnless { showUpdateInstaller },
+        onInstall = { showUpdateInstaller = true },
+        onDismiss = { dismissUpdateScope.launch { UpdateCheckHolder.dismiss() } },
     )
 
     when (val request = uiState.pendingApproval) {
@@ -440,6 +430,75 @@ fun HomePageContent(
         }
         null -> {}
     }
+}
+
+/**
+ * 更新弹窗：标题 + 版本提示 + GitHub release 原文（markdown，可滚动）。
+ * 只负责展示；"同一版本只弹一次" 的记账在 [UpdateCheckHolder.dismiss]。
+ */
+@Composable
+private fun UpdateAvailableDialog(
+    update: UpdateCheckResult?,
+    onInstall: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val uriHandler = LocalUriHandler.current
+    LiquidDialog(
+        visible = update?.hasUpdate == true,
+        onDismissRequest = onDismiss,
+        dismissOnBackgroundTap = false,
+        title = {
+            Text(
+                text = stringResource(R.string.update_dialog_title),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(
+                    R.string.update_dialog_text,
+                    update?.remoteVersion.orEmpty(),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        content = {
+            val notes = update?.releaseNotes.orEmpty()
+            if (notes.isNotBlank()) {
+                // 说明单独限高滚动，标题与按钮常驻
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    AssistantOutputText(notes)
+                }
+            }
+        },
+        actions = {
+            MaterialTintLiquidButton(
+                text = stringResource(R.string.update_dialog_confirm),
+                onClick = {
+                    onInstall()
+                },
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            )
+            MaterialTintLiquidButton(
+                text = stringResource(R.string.update_dialog_cancel),
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+        },
+    )
 }
 
 /**
@@ -748,15 +807,8 @@ private fun HomePageContentBody(
             )
         }
 
-        com.niki914.zafiro.app.voice.HomeVoiceControls(
-            onInputChange = onInputChange,
-            onSend = onSendClick,
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(bottom = composerBottomPadding + composerHeight.value + 8.dp + if (pendingImages.isNotEmpty() || pendingFiles.isNotEmpty()) 68.dp else 0.dp)
-                .padding(horizontal = 20.dp),
-        )
-
         LiquidChatComposer(
+            voiceContent = { com.niki914.zafiro.app.voice.HomeVoiceControls(onInputChange, onSendClick) },
             value = uiState.input,
             onValueChange = onInputChange,
             onSendClick = onSendClick,
@@ -1272,9 +1324,11 @@ private fun HomeChatTurnItem(
                                 val blockIndexNow = blockIndex
                                 val thinkingKey = "${turn.id}_$blockIndexNow"
                                 val isThinkingExpanded = thinkingKey in expandedThinking
+                                val thinkingTitle =
+                                    stringResource(R.string.ui_home_thinking_title)
                                 CollapsibleBlock(
                                     icon = ToolPresentation.Thinking,
-                                    title = "Thinking" + ToolPresentation
+                                    title = thinkingTitle + ToolPresentation
                                         .previewOf(block.text)
                                         ?.let { " · $it" }
                                         .orEmpty(),

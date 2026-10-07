@@ -87,9 +87,12 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
     }
     val permissions = remember { requireService<com.niki914.zafiro.business.permission.PermissionManager>() }
     var showSettings by remember { mutableStateOf(false) }
+    if (status.problem != null) {
+        AlertDialog(onDismissRequest = { session.stop() }, title = { Text(stringResource(R.string.voice_settings)) }, text = { Text(stringResource(when(status.problem) { VoiceProblem.Microphone -> R.string.voice_microphone_error; VoiceProblem.Configuration -> R.string.voice_configuration; VoiceProblem.Quota -> R.string.voice_quota; else -> R.string.voice_error })) }, confirmButton = { TextButton(onClick = { session.stop() }) { Text(stringResource(R.string.voice_stop_audio)) } })
+    }
     var showGlass by remember { mutableStateOf(false) }
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = {
+        IconButton(onClick = {
             if (status.active) {
                 if (ownsResponse && agent.status.value.isRunning) agent.stop()
                 ownsResponse = false; session.stop()
@@ -99,9 +102,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                 if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) session.start()
             }
         }) {
-            Icon(if (status.active) Icons.Default.Stop else Icons.Default.Mic, contentDescription = null)
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(when {
+            Icon(if (status.active) Icons.Default.Stop else Icons.Default.Mic, contentDescription = stringResource(when {
                 status.problem != null -> when (status.problem) {
                     VoiceProblem.Configuration -> R.string.voice_configuration
                     VoiceProblem.Quota -> R.string.voice_quota
@@ -114,7 +115,8 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                 status.phase == ZafiroGlassPhase.Understanding -> R.string.voice_transcribing
                 status.phase == ZafiroGlassPhase.Thinking -> R.string.voice_working
                 else -> R.string.voice_listening
-            }), maxLines = 2)
+            }))
+
         }
         IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, stringResource(R.string.voice_settings)) }
     }
