@@ -130,5 +130,5 @@ internal class GeminiVoiceProvider : VoiceTranscriber, VoiceSynthesizer {
         ?.get("content")?.jsonObject?.get("parts")?.jsonArray ?: throw VoiceFailure(VoiceProblem.Provider)
 }
 
-internal enum class VoiceProblem { Configuration, Microphone, Network, Quota, Provider, Model }
+internal enum class VoiceProblem { Configuration, Microphone, Network, Quota, Provider, Model, WakeUnavailable }
 internal class VoiceFailure(val problem: VoiceProblem, val status: Int? = null, val retryMillis: Long = 60_000) : Exception(problem.name)

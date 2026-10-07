@@ -44,7 +44,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
     val permissions = remember { requireService<com.niki914.zafiro.business.permission.PermissionManager>() }
     var showSettings by remember { mutableStateOf(settingsOnly) }
     if (status.problem != null) {
-        AlertDialog(onDismissRequest = { VoiceController.stop(context) }, title = { Text(stringResource(R.string.voice_settings)) }, text = { Text(stringResource(when(status.problem) { VoiceProblem.Microphone -> R.string.voice_microphone_error; VoiceProblem.Configuration -> R.string.voice_configuration; VoiceProblem.Quota -> R.string.voice_quota; else -> R.string.voice_error })) }, confirmButton = { TextButton(onClick = { VoiceController.stop(context) }) { Text(stringResource(R.string.voice_stop_audio)) } })
+        AlertDialog(onDismissRequest = { VoiceController.stop(context) }, title = { Text(stringResource(R.string.voice_settings)) }, text = { Text(stringResource(when(status.problem) { VoiceProblem.WakeUnavailable -> R.string.voice_wake_unavailable; VoiceProblem.Microphone -> R.string.voice_microphone_error; VoiceProblem.Configuration -> R.string.voice_configuration; VoiceProblem.Quota -> R.string.voice_quota; else -> R.string.voice_error })) }, confirmButton = { TextButton(onClick = { VoiceController.stop(context) }) { Text(stringResource(R.string.voice_stop_audio)) } })
     }
     var showGlass by remember { mutableStateOf(false) }
     if (!settingsOnly) Row(modifier, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -62,6 +62,7 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
                     VoiceProblem.Configuration -> R.string.voice_configuration
                     VoiceProblem.Quota -> R.string.voice_quota
                     VoiceProblem.Microphone -> R.string.voice_microphone_error
+                    VoiceProblem.WakeUnavailable -> R.string.voice_wake_unavailable
                     VoiceProblem.Model -> R.string.voice_model_error
                     else -> R.string.voice_error
                 }

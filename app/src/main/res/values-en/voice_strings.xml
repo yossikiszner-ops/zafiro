@@ -10,7 +10,7 @@
     <string name="voice_microphone_error">Microphone unavailable</string>
     <string name="voice_model_error">No compatible voice model. Check provider settings</string>
     <string name="voice_error">Voice request failed. Tap to stop</string>
-    <string name="voice_privacy">Speech detection is local. Only completed speech is sent to your configured Gemini account. Recording stops when you leave this screen or after 30 seconds idle. No audio is saved.</string>
+    <string name="voice_privacy">Speech detection is local. Only completed speech is sent to your configured Gemini account. A visible notification keeps voice available in other apps. Recording stops after 30 seconds idle; Jarvis wake sessions stop after 30 minutes. Audio is not saved. Tap the microphone during speech to interrupt.</string>
     <string name="voice_name">Voice name (e.g. Charon, Puck, Kore)</string>
     <string name="voice_style">Delivery style</string>
     <string name="voice_model">TTS model (empty = automatic)</string>
@@ -59,4 +59,5 @@
     <string name="cursor_intensity">Cursor intensity</string>
     <string name="cursor_speed">Motion speed</string>
     <string name="cursor_feedback">Action feedback</string>
+    <string name="voice_wake_unavailable">On-device Jarvis recognition is unavailable. Check that on-device English recognition is installed and enabled.</string>
 </resources>

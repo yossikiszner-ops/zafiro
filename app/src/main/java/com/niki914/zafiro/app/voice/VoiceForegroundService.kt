@@ -58,7 +58,7 @@ class VoiceForegroundService : Service(), RecognitionListener {
                 if (session.status.value.active) session.stop()
                 wakeMode = true
                 if (Build.VERSION.SDK_INT < 31 || !SpeechRecognizer.isOnDeviceRecognitionAvailable(this)) {
-                    session.microphoneFailed(); stopSelf()
+                    session.reportFailure(VoiceProblem.WakeUnavailable); stopSelf()
                 } else {
                     scheduleWake()
                     expiry?.cancel()
@@ -113,7 +113,7 @@ class VoiceForegroundService : Service(), RecognitionListener {
         if (destroyed || !wakeMode) return
         if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) scheduleWake()
         else if (++retries <= 3 && error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) scheduleWake()
-        else { session.microphoneFailed(); stopSelf() }
+        else { session.reportFailure(VoiceProblem.WakeUnavailable); stopSelf() }
     }
     override fun onDestroy() {
         destroyed = true; wakeMode = false; closeRecognizer(); expiry?.cancel()
