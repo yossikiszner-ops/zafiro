@@ -77,6 +77,10 @@ internal object VoiceController {
     }
     fun start(context: Context, wake: Boolean = false) {
         initialize(context)
+        if (requireService<com.niki914.zafiro.business.permission.PermissionManager>()
+                .status(com.niki914.zafiro.business.permission.Permission.MICROPHONE) != com.niki914.zafiro.business.permission.PermissionState.GRANTED) {
+            session.microphoneFailed(); return
+        }
         try {
             ContextCompat.startForegroundService(context, Intent(context, VoiceForegroundService::class.java)
                 .setAction(if (wake) VoiceForegroundService.WAKE else VoiceForegroundService.LISTEN))

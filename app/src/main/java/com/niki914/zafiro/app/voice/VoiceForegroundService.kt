@@ -35,12 +35,14 @@ class VoiceForegroundService : Service(), RecognitionListener {
         manager.createNotificationChannel(NotificationChannel("zafiro_voice", getString(R.string.voice_settings), NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val stop = PendingIntent.getService(this, 0, Intent(this, javaClass).setAction(STOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        startForeground(NOTIFICATION, NotificationCompat.Builder(this, "zafiro_voice")
+        try { startForeground(NOTIFICATION, NotificationCompat.Builder(this, "zafiro_voice")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentTitle(getString(R.string.voice_settings))
             .setContentText(getString(R.string.voice_background_active)).setContentIntent(open)
             .setOngoing(true).setSilent(true)
-            .addAction(android.R.drawable.ic_media_pause, getString(R.string.voice_background_stop), stop).build())
+            .addAction(android.R.drawable.ic_media_pause, getString(R.string.voice_background_stop), stop).build()) } catch (_: SecurityException) {
+            session.microphoneFailed(); stopSelf(); return
+        }
         scope.launch {
             session.status.collect { status ->
                 if (!started) return@collect
@@ -95,9 +97,10 @@ class VoiceForegroundService : Service(), RecognitionListener {
         recognizer?.cancel(); recognizer?.destroy(); recognizer = null
     }
     override fun onResults(results: Bundle?) {
+        if (!recognizing || !wakeMode || destroyed) return
         recognizing = false; retries = 0
         val command = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-            ?.firstNotNullOfOrNull { WakeCommand.parse(it) }
+            ?.firstOrNull()?.let { WakeCommand.parse(it) }
         if (command != null) {
             closeRecognizer()
             scope.launch {
@@ -109,6 +112,7 @@ class VoiceForegroundService : Service(), RecognitionListener {
         } else scheduleWake()
     }
     override fun onError(error: Int) {
+        if (!recognizing || !wakeMode || destroyed) return
         recognizing = false
         if (destroyed || !wakeMode) return
         if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) scheduleWake()
