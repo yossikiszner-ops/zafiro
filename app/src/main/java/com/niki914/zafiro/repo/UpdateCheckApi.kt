@@ -64,7 +64,7 @@ private object UpdateCheckApi {
     private const val GITHUB_API_LATEST_ANY =
         "https://api.github.com/repos/yossikiszner-ops/zafiro/releases?per_page=1"
 
-    private val semverRe = Regex("""(\d+\.\d+\.\d+)""")
+    private val semverRe = Regex("""(\d+\.\d+\.\d+(?:-zafiro\.\d+)?)""")
 
     suspend fun check(currentVersion: String): UpdateCheckResult {
         return withContext(Dispatchers.IO) {
@@ -130,18 +130,7 @@ private object UpdateCheckApi {
         }
     }
 
-    private fun isNewer(remote: String, current: String): Boolean {
-        val r = remote.split(".").map { it.toIntOrNull() ?: 0 }
-        val c = current.split(".").map { it.toIntOrNull() ?: 0 }
-        val len = maxOf(r.size, c.size)
-        for (i in 0 until len) {
-            val rp = r.getOrElse(i) { 0 }
-            val cp = c.getOrElse(i) { 0 }
-            if (rp > cp) return true
-            if (rp < cp) return false
-        }
-        return false
-    }
+    private fun isNewer(remote: String, current: String): Boolean = CustomUpdateVersions.newer(remote, current)
 
     private fun noUpdate() =
         UpdateCheckResult(
