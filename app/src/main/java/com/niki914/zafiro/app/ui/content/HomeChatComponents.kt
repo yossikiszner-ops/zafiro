@@ -96,6 +96,9 @@ internal data class AssistantErrorUi(
 )
 
 internal fun toAssistantErrorUi(message: String?, code: LlmErrorCode?, attempts: Int? = null): AssistantErrorUi {
+    if (code == LlmErrorCode.Quota || message?.contains("RESOURCE_EXHAUSTED", true) == true || message?.contains("Quota exceeded", true) == true) return AssistantErrorUi(R.string.provider_quota_title, R.string.provider_quota_body)
+    if (code == LlmErrorCode.Auth) return AssistantErrorUi(R.string.ui_home_error_config_required_title, R.string.provider_auth_body)
+    if (code == LlmErrorCode.RateLimit) return AssistantErrorUi(R.string.provider_rate_title, R.string.ui_home_error_retry_body)
     return when (code) {
         // 配置问题：用户可行动的引导（唯一本地化正文）
         LlmErrorCode.ConfigRequired -> AssistantErrorUi(
@@ -110,8 +113,7 @@ internal fun toAssistantErrorUi(message: String?, code: LlmErrorCode?, attempts:
         // RetryExhausted 带 attempts：标题反映"重试已耗尽"而非泛网络错误
         LlmErrorCode.RetryExhausted if attempts != null -> AssistantErrorUi(
             titleRes = R.string.ui_home_error_retry_exhausted_title,
-            bodyRes = if (message.isNullOrBlank()) R.string.ui_home_error_retry_body else null,
-            body = message?.trim()?.ifEmpty { null },
+            bodyRes = R.string.ui_home_error_retry_body,
         )
 
         LlmErrorCode.Auth, LlmErrorCode.Quota, LlmErrorCode.RateLimit,
@@ -119,15 +121,13 @@ internal fun toAssistantErrorUi(message: String?, code: LlmErrorCode?, attempts:
         LlmErrorCode.RetryExhausted,
             -> AssistantErrorUi(
             titleRes = R.string.ui_home_error_network_title,
-            bodyRes = if (message.isNullOrBlank()) R.string.ui_home_error_retry_body else null,
-            body = message?.trim()?.ifEmpty { null },
+            bodyRes = R.string.ui_home_error_retry_body,
         )
 
         // 响应空闲超时：专属标题，秒数不进错误串（用户只需知道超时了）
         LlmErrorCode.IdleTimeout -> AssistantErrorUi(
             titleRes = R.string.ui_home_error_idle_timeout_title,
-            bodyRes = if (message.isNullOrBlank()) R.string.ui_home_error_retry_body else null,
-            body = message?.trim()?.ifEmpty { null },
+            bodyRes = R.string.ui_home_error_retry_body,
         )
 
         // 输出被上限截断：正文告诉用户去哪里调大（新设置项），不说是网络/内部问题
@@ -140,7 +140,7 @@ internal fun toAssistantErrorUi(message: String?, code: LlmErrorCode?, attempts:
         LlmErrorCode.TurnConflict, LlmErrorCode.HookFailed,
         LlmErrorCode.ToolExecutionFailed, null,
             -> {
-            val normalized = message?.trim()
+            val normalized = message?.trim()?.takeUnless { it.startsWith("{") || it.startsWith("[") }
             if (normalized.isNullOrEmpty()) {
                 AssistantErrorUi(
                     titleRes = R.string.ui_home_error_internal_title,

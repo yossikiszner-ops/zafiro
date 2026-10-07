@@ -27,6 +27,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
         val now = System.currentTimeMillis()
         val google = runCatching { URI(snapshot.endpoint).host == "generativelanguage.googleapis.com" }.getOrDefault(false)
         if (google && (credential != snapshot.apiKey || now - discoveryAt > 900_000)) {
+            if (credential != snapshot.apiKey) cooldown.clear()
             credential = snapshot.apiKey; discoveryAt = now; cached = emptyList()
             try {
                 val response = engine.unary(HttpRequest("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", "GET", mapOf("x-goog-api-key" to snapshot.apiKey), null, HttpTimeouts(5000, 5000, 5000)))
@@ -51,17 +52,34 @@ internal object RoutingRuntime : Hooks, HttpEngine {
         val start = System.currentTimeMillis()
         val model = runCatching { json.parseToJsonElement(request.body.orEmpty()).jsonObject["model"]?.jsonPrimitive?.content }.getOrNull().orEmpty()
         RequestRouting.latest.value = RequestRouting.latest.value.copy(inputTokens = RequestPlanner.estimateTokens(request.body.orEmpty()))
-        val response = try { engine.stream(request) } catch (cancel: CancellationException) { throw cancel }
+        var response = try { if ((cooldown[model] ?: 0) > System.currentTimeMillis()) StreamResponse.Error(429, emptyMap(), "Model API quota temporarily unavailable") else engine.stream(request) } catch (cancel: CancellationException) { throw cancel }
             catch (e: Exception) { if (model.isNotBlank()) cooldown[model] = System.currentTimeMillis() + 30_000; throw e }
-        if (response is StreamResponse.Error && response.statusCode in setOf(404, 429, 500, 502, 503, 504)) {
-            val seconds = response.headers.entries.firstOrNull { it.key.equals("Retry-After", true) }?.value?.toLongOrNull()?.coerceIn(30, 3600) ?: 60
-            if (model.isNotBlank()) cooldown[model] = System.currentTimeMillis() + seconds * 1000
+        val google = runCatching { URI(request.url).host == "generativelanguage.googleapis.com" }.getOrDefault(false)
+        var currentModel = model
+        val tried = mutableSetOf(model)
+        for (attempt in 0..2) {
+            val failure = response as? StreamResponse.Error ?: break
+            if (failure.statusCode !in setOf(404, 429, 500, 502, 503, 504)) break
+            val delay = ProviderBackoff.delayMillis(failure.statusCode, failure.body,
+                failure.headers.entries.firstOrNull { it.key.equals("Retry-After", true) }?.value)
+            if (currentModel.isNotBlank()) cooldown[currentModel] = maxOf(cooldown[currentModel] ?: 0, System.currentTimeMillis() + delay)
+            if (!google || attempt == 2 || model.isBlank()) break
+            val alternate = cached.firstOrNull { candidate ->
+                candidate !in tried && candidate.startsWith("gemini-") && "flash" in candidate &&
+                    listOf("tts", "live", "image", "native-audio", "transcribe", "embedding", "computer-use", "robotics").none(candidate::contains) &&
+                    (cooldown[candidate] ?: 0) <= System.currentTimeMillis()
+            } ?: break
+            val body = json.parseToJsonElement(request.body!!).jsonObject
+            val rewritten = JsonObject(body + ("model" to JsonPrimitive(alternate)))
+            currentModel = alternate; tried += alternate
+            RequestRouting.latest.value = RequestRouting.latest.value.copy(model = alternate, reason = "fallback_after_failure")
+            response = engine.stream(request.copy(body = rewritten.toString()))
         }
-        if (response !is StreamResponse.Ok) return response
+        val success = response as? StreamResponse.Ok ?: return response
         var output = 0
         var measuredInput: Int? = null
         var measuredOutput: Int? = null
-        return response.copy(lines = response.lines.onEach { line ->
+        return success.copy(lines = success.lines.onEach { line ->
             line.data?.let { data ->
                 runCatching {
                     val root = json.parseToJsonElement(data).jsonObject

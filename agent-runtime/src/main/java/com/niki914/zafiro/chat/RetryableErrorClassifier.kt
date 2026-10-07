@@ -20,6 +20,7 @@ object RetryableErrorClassifier {
         // 服务过载
         Regex("overloaded|server is (?:over)?busy|temporarily unavailable|please try again later") to LlmErrorCode.Overloaded,
         // 限流
+        Regex("insufficient_quota|billing|\\bquota\\b|resource_exhausted") to LlmErrorCode.Quota,
         Regex("\\brate limit\\b|\\b429\\b|too many requests") to LlmErrorCode.RateLimit,
         // 配额/计费（不重试类，单列让 UI 可区分）
         Regex("insufficient_quota|billing|\\bquota\\b") to LlmErrorCode.Quota,
@@ -42,7 +43,7 @@ object RetryableErrorClassifier {
     fun classify(error: LLMError): LlmErrorCode = when (error.code) {
         LLMErrorCode.Auth -> LlmErrorCode.Auth
         LLMErrorCode.Quota -> LlmErrorCode.Quota
-        LLMErrorCode.RateLimit -> LlmErrorCode.RateLimit
+        LLMErrorCode.RateLimit -> if (Regex("quota|resource_exhausted", RegexOption.IGNORE_CASE).containsMatchIn(error.message)) LlmErrorCode.Quota else LlmErrorCode.RateLimit
         LLMErrorCode.Overloaded -> LlmErrorCode.Overloaded
         LLMErrorCode.ContextOverflow -> LlmErrorCode.Parse
         LLMErrorCode.Parse -> LlmErrorCode.Parse

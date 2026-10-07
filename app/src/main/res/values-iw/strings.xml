@@ -429,4 +429,8 @@
   <string name="agent_resident_action_stop">עצירה</string>
   <string name="agent_resident_action_approve">אישור</string>
   <string name="agent_resident_action_decline">דחייה</string>
+    <string name="provider_quota_title">מכסת ה־API אינה זמינה</string>
+    <string name="provider_quota_body">למודל הזה אין מכסת API זמינה בפרויקט. בחרו מודל זמין או בדקו את המכסה והחיוב של הפרויקט ב־Google AI Studio. מנוי Gemini אינו מעניק מכסת API.</string>
+    <string name="provider_auth_body">בדקו או החליפו את מפתח ה־API בהגדרות ספק הבינה.</string>
+    <string name="provider_rate_title">יותר מדי בקשות</string>
 </resources>

@@ -476,4 +476,8 @@
     <string name="agent_resident_action_stop">Stop</string>
     <string name="agent_resident_action_approve">Allow</string>
     <string name="agent_resident_action_decline">Deny</string>
+    <string name="provider_quota_title">API quota unavailable</string>
+    <string name="provider_quota_body">This model has no remaining API quota for this project. Choose an available model or check the project quota and billing in Google AI Studio. A Gemini subscription does not grant API quota.</string>
+    <string name="provider_auth_body">Check or replace the API key in AI provider settings.</string>
+    <string name="provider_rate_title">Too many requests</string>
 </resources>
