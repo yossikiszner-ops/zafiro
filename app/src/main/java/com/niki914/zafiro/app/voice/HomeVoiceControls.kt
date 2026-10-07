@@ -50,14 +50,14 @@ internal fun HomeVoiceControls(onInputChange: (String) -> Unit, onSend: () -> Un
     if (!settingsOnly) Row(modifier, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
         Box(Modifier.combinedClickable(onClick = {
             if (status.active) {
-                if (status.phase == ZafiroGlassPhase.Speaking) session.listenNow()
+                if (status.phase == ZafiroGlassPhase.Speaking) VoiceController.interrupt()
                 else VoiceController.stop(context)
             } else scope.launch {
                 permissions.request(com.niki914.zafiro.business.permission.Permission.MICROPHONE)
                 if (owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) VoiceController.start(context)
             }
         }, onLongClickLabel = stringResource(R.string.voice_settings), onLongClick = { showSettings = true }).size(48.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-            Icon(if (status.active) Icons.Default.Stop else Icons.Default.Mic, contentDescription = stringResource(when {
+            Icon(if (status.active && status.phase != ZafiroGlassPhase.Speaking) Icons.Default.Stop else Icons.Default.Mic, contentDescription = stringResource(when {
                 status.problem != null -> when (status.problem) {
                     VoiceProblem.Configuration -> R.string.voice_configuration
                     VoiceProblem.Quota -> R.string.voice_quota

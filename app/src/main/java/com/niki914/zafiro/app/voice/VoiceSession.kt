@@ -186,6 +186,7 @@ internal class VoiceSession(
     }
     private fun stopTrack() { track?.let { runCatching { it.pause(); it.flush() } } }
     fun listenNow() {
+        awaitingAgent = false
         interruptSpeech()
         accepting = true
         if (mutable.value.active) publish(ZafiroGlassPhase.Listening)

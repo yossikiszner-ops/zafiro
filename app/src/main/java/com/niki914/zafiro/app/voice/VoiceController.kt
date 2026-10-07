@@ -86,6 +86,11 @@ internal object VoiceController {
                 .setAction(if (wake) VoiceForegroundService.WAKE else VoiceForegroundService.LISTEN))
         } catch (_: Exception) { session.stop(); session.microphoneFailed() }
     }
+    fun interrupt() {
+        if (ownsResponse) requireService<Agent>().stop()
+        ownsResponse = false
+        session.listenNow()
+    }
     fun stop(context: Context) {
         if (ownsResponse) requireService<Agent>().stop()
         ownsResponse = false

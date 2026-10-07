@@ -519,12 +519,13 @@ fun LiquidChatComposer(
             expandedLayout = expanded,
             expandedActionsRow = {
                 attachButton()
+                Spacer(Modifier.weight(1f))
                 voiceContent()
-                sendButton()
+                if (buttonEnabled) sendButton()
             },
             modifier = modifier.fillMaxWidth(),
-            leadingContent = { Row { attachButton(); voiceContent() } },
-            trailingContent = { sendButton() },
+            leadingContent = { attachButton() },
+            trailingContent = { Row(verticalAlignment = Alignment.CenterVertically) { voiceContent(); if (buttonEnabled) sendButton() } },
         )
 }
 
