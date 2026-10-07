@@ -482,7 +482,11 @@ object LLMController {
                     state.okia.send(
                         text = effectiveQuery,
                         images = images,
-                        options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
+                        options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt,
+                            localAction = if (images.isEmpty() && files.isEmpty())
+                                com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
+                                    com.niki914.zafiro.chat.routing.DirectCommand.parse(query), state.snapshot.tools.builtinTools)
+                            else null),
                     ) { event ->
                         val mapped = LlmStreamEventMapper.map(event, startedAtMs)
                         mapped?.let {

@@ -6,6 +6,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RequestPlannerTest {
+    // Protects normal chat latency without reducing reasoning for complex tasks or Quality mode.
+    @Test fun ordinaryFlashChatAvoidsHighReasoningButComplexTasksKeepIt() {
+        assertEquals(ThinkingLevel.LOW, RequestPlanner.thinkingLevel("gemini-3.8-flash", "שלום", false, RequestBudget.Balanced, ThinkingLevel.HIGH))
+        assertEquals(ThinkingLevel.HIGH, RequestPlanner.thinkingLevel("gemini-3.8-flash", "deep research", false, RequestBudget.Balanced, ThinkingLevel.HIGH))
+        assertEquals(ThinkingLevel.HIGH, RequestPlanner.thinkingLevel("gemini-3.8-flash", "hello", false, RequestBudget.Quality, ThinkingLevel.HIGH))
+    }
+    @Test fun flash25AlsoUsesLowReasoningForSimpleActions() {
+        assertEquals(ThinkingLevel.LOW, RequestPlanner.thinkingLevel("gemini-2.5-flash", "open WhatsApp", false, RequestBudget.Balanced, ThinkingLevel.HIGH))
+    }
+    @Test fun fastRoutePreservesDisabledAndProviderDefaultReasoning() {
+        assertEquals(ThinkingLevel.OFF, RequestPlanner.thinkingLevel("gemini-3.8-flash", "hello", false, RequestBudget.Economy, ThinkingLevel.OFF))
+        assertNull(RequestPlanner.thinkingLevel("gemini-3.8-flash", "hello", false, RequestBudget.Balanced, null))
+        assertEquals(ThinkingLevel.HIGH, RequestPlanner.thinkingLevel("another-provider", "hello", false, RequestBudget.Balanced, ThinkingLevel.HIGH))
+    }
+
     private fun user(s: String) = Message.User(listOf(ContentBlock.Text(s)))
     private fun tool(s: String) = ToolDescriptor(s, s, kind = ToolKind.Local)
     @Test fun routingUsesOnlyAvailableSuitableModels() {

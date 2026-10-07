@@ -141,7 +141,22 @@ internal class RealOkia(
 
             val request = buildLoopRequest(text, options)
             val job = turnScope.async {
-                dependencies.agentLoop.run(request) { event -> handleEvent(event, onEvent) }
+                val local = options?.localAction
+                if (local == null) dependencies.agentLoop.run(request) { event -> handleEvent(event, onEvent) }
+                else {
+                    handleEvent(TurnEvent.TurnStarted(text), onEvent)
+                    val message = local.run { event -> handleEvent(event, onEvent) }
+                    request.onCommit(listOf(Message.Assistant(message)))
+                    message.content.forEachIndexed { index, block ->
+                        if (block is ContentBlock.Text) {
+                            handleEvent(TurnEvent.TextStarted(index, message), onEvent)
+                            handleEvent(TurnEvent.TextDelta(index, block.text, message), onEvent)
+                            handleEvent(TurnEvent.TextEnded(index, block.text, message), onEvent)
+                        }
+                    }
+                    handleEvent(TurnEvent.TurnCompleted(message), onEvent)
+                    TurnResult.Completed(com.niki914.okia.loop.CompletionReason.Stop)
+                }
             }
             activeTurn = ActiveTurn(job = job, startEntryId = turnStartEntry.id)
             turnJob = job

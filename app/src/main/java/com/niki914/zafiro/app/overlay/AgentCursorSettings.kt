@@ -35,6 +35,11 @@ internal fun AgentCursorSettings(onDismiss: () -> Unit) {
                     update = { it.setImageDrawable(OpticalFocusDrawable().apply { cursorStyle = config.style }) },
                     modifier = Modifier.size(64.dp),
                 )
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(stringResource(R.string.cursor_physical_typing), Modifier.weight(1f))
+                    Switch(config.physicalTyping, { config = config.copy(physicalTyping = it) })
+                }
+                Text(stringResource(R.string.cursor_physical_typing_hint))
                 Text(stringResource(R.string.cursor_intensity))
                 Slider(config.intensity, { config = config.copy(intensity = it) }, valueRange = .1f..1f, enabled = config.enabled)
                 Text(stringResource(R.string.cursor_speed))

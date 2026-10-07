@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cursor_physical_typing">העדף לחיצות פיזיות במקלדת</string>
+    <string name="cursor_physical_typing_hint">אפשרות איטית יותר. משתמש במקשים נגישים אמיתיים לטקסט קצר בשדה ריק. אם המקלדת או התווים אינם נתמכים, נעשה שימוש בהזנה הרגילה לפני תחילת ההקלדה. הקלדה שנקטעה או שלא אומתה נעצרת; אין לחיצה על Enter.</string>
+</resources>

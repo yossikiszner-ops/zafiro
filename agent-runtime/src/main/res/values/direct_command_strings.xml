@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="direct_app_ambiguous">More than one installed app matches. Please use its full name.</string>
+    <string name="direct_app_missing">I could not find that installed app.</string>
+    <string name="direct_action_failed">I could not complete the action. Check the required permissions.</string>
+    <string name="direct_app_opened">The app is open.</string>
+    <string name="direct_app_requested">Android accepted the launch request. I could not verify the open screen.</string>
+    <string name="direct_volume_updated">Media volume updated.</string>
+    <string name="direct_back_performed">Android accepted the Back action.</string>
+</resources>

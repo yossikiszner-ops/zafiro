@@ -12,6 +12,7 @@ internal data class AgentCursorAppearance(
     val intensity: Float = .7f,
     val speed: Float = 1f,
     val tapFeedback: Boolean = true,
+    val physicalTyping: Boolean = false,
 )
 
 internal object AgentCursorPreferences {
@@ -24,13 +25,17 @@ internal object AgentCursorPreferences {
             intensity = prefs.getFloat("intensity", .7f).takeIf { it.isFinite() }?.coerceIn(.1f, 1f) ?: .7f,
             speed = prefs.getFloat("speed", 1f).takeIf { it.isFinite() }?.coerceIn(.5f, 2f) ?: 1f,
             tapFeedback = prefs.getBoolean("feedback", true),
+            physicalTyping = prefs.getBoolean("physical_typing", false),
         )
+        AccessibilityController.physicalKeyboardTyping = appearance.value.physicalTyping
     }
     fun save(context: Context, value: AgentCursorAppearance) {
         appearance.value = value
+        AccessibilityController.physicalKeyboardTyping = value.physicalTyping
         context.getSharedPreferences("zafiro_cursor", Context.MODE_PRIVATE).edit()
             .putString("style", value.style.name).putBoolean("enabled", value.enabled).putFloat("intensity", value.intensity)
-            .putFloat("speed", value.speed).putBoolean("feedback", value.tapFeedback).apply()
+            .putFloat("speed", value.speed).putBoolean("feedback", value.tapFeedback)
+            .putBoolean("physical_typing", value.physicalTyping).apply()
         (AccessibilityController.pointerOverlay as? PointerOverlay)?.refreshAppearance()
     }
 }

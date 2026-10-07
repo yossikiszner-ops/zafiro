@@ -6,9 +6,9 @@ import kotlinx.coroutines.ensureActive
 
 /** Visualization follows authority; rejection and cancellation never produce positive feedback. */
 internal object PointerActionCoordinator {
-    suspend fun execute(pointer: IPointerOverlay?, x: Float, y: Float,
+    suspend fun execute(pointer: IPointerOverlay?, x: Float, y: Float, typing: Boolean = false,
         action: suspend () -> BuiltinToolResult): BuiltinToolResult {
-        pointer?.animateTo(x, y)
+        if (typing) pointer?.animateTypingTo(x, y) else pointer?.animateTo(x, y)
         currentCoroutineContext().ensureActive()
         val result = action()
         currentCoroutineContext().ensureActive()

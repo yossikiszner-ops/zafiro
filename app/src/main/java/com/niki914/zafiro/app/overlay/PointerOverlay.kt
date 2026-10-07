@@ -118,6 +118,12 @@ class PointerOverlay : IPointerOverlay {
         }
     }
 
+    override suspend fun animateTypingTo(x: Float, y: Float) {
+        if (!AgentCursorPreferences.appearance.value.enabled) return
+        val trajectory = PointerCurveMath.buildTrajectory(curX, curY, curHeading, x, y, MovementMode.FLY, screenW, screenH)
+        animateAlongRaw(trajectory, (120 / AgentCursorPreferences.appearance.value.speed).toLong().coerceAtLeast(40))
+    }
+
     override fun actionAccepted() {
         handler.post {
             val config = AgentCursorPreferences.appearance.value

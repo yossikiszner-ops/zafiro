@@ -30,8 +30,8 @@ internal object RoutingRuntime : Hooks, HttpEngine {
             if (credential != snapshot.apiKey) cooldown.clear()
             credential = snapshot.apiKey; discoveryAt = now; cached = emptyList()
             try {
-                val response = engine.unary(HttpRequest("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", "GET", mapOf("x-goog-api-key" to snapshot.apiKey), null, HttpTimeouts(5000, 5000, 5000)))
-                if (response.statusCode == 200) cached = json.parseToJsonElement(response.body!!.decodeToString()).jsonObject["models"]?.jsonArray
+                val response = kotlinx.coroutines.withTimeoutOrNull(2_000) { engine.unary(HttpRequest("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", "GET", mapOf("x-goog-api-key" to snapshot.apiKey), null, HttpTimeouts(2000, 2000, 2000))) }
+                if (response?.statusCode == 200) cached = json.parseToJsonElement(response.body!!.decodeToString()).jsonObject["models"]?.jsonArray
                     ?.mapNotNull { it.jsonObject.takeIf { m -> m["supportedGenerationMethods"]?.jsonArray?.any { v -> v.jsonPrimitive.content == "generateContent" } == true }?.get("name")?.jsonPrimitive?.content?.removePrefix("models/") }.orEmpty()
             } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { /* Discovery unavailable: preserve the configured model. */ }
         }
@@ -43,6 +43,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
         val tools = RequestPlanner.tools(snapshot.tools, history)
         val compact = RequestPlanner.compact(history, if (budget == RequestBudget.Economy) 3 else 5)
         val projected = snapshot.copy(model = chosen, tools = tools,
+            thinkingLevel = if (google) RequestPlanner.thinkingLevel(chosen, text, images, budget, snapshot.thinkingLevel) else snapshot.thinkingLevel,
             maxTokens = minOf(snapshot.maxTokens, when (budget) { RequestBudget.Economy -> 4096; RequestBudget.Balanced -> 16384; RequestBudget.Quality -> snapshot.maxTokens }))
         request.write(projected, compact, "zafiro_request_router")
         RequestRouting.latest.value = RouteObservation(chosen, reason, tools = tools.size, totalTools = snapshot.tools.size, retainedMessages = compact.size, totalMessages = history.size)

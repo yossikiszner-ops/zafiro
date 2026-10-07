@@ -26,11 +26,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import java.util.concurrent.CopyOnWriteArrayList
@@ -91,10 +88,18 @@ object AgentImpl : Agent {
      * 串行工具链下同时只有一个在途请求；并发到达时首个胜出、其余随
      * `decideApproval` 的 cancel 被丢弃（边缘业务，不做队列）。
      */
-    override val status: StateFlow<AgentState> =
-        combine(statusFlow, approvalFlow) { engine, pending ->
-            pending?.let { AgentState.WaitingApproval(it) } ?: engine
-        }.stateIn(scope, SharingStarted.Eagerly, AgentState.Idle())
+    private val visibleStatus = MutableStateFlow<AgentState>(AgentState.Idle())
+    private val statusLock = Any()
+    override val status: StateFlow<AgentState> = visibleStatus.asStateFlow()
+
+    private fun setEngineStatus(state: AgentState) = synchronized(statusLock) {
+        statusFlow.value = state
+        visibleStatus.value = approvalFlow.value?.let { AgentState.WaitingApproval(it) } ?: state
+    }
+    private fun setApproval(request: ApprovalRequest?) = synchronized(statusLock) {
+        approvalFlow.value = request
+        visibleStatus.value = request?.let { AgentState.WaitingApproval(it) } ?: statusFlow.value
+    }
 
     init {
         // 草稿里的 Pending 项由实现侧落盘并归约成 Ready（契约的图片写入路径）
@@ -142,7 +147,11 @@ object AgentImpl : Agent {
         val token = ++roundToken
         streamJob = scope.launch {
             try {
-                val conversationId = ensureConversation(query)
+                val conversationId = kotlinx.coroutines.withTimeoutOrNull(20_000) { ensureConversation(query) }
+                    ?: run {
+                        fold(LlmStreamEvent.Error(message = null, code = com.niki914.zafiro.chat.LlmErrorCode.IdleTimeout))
+                        return@launch
+                    }
                 store().saveDraft(conversationId, "")
                 Logger.i(LOG_TAG, "round started conversationId=${conversationId.value} queryLength=${query.length}")
                 LLMController.stream(query = query, images = contentImages, files = files)
@@ -252,7 +261,7 @@ object AgentImpl : Agent {
         val currentApprovers = approvers.toList()
         if (currentApprovers.isEmpty()) return@coroutineScope ApprovalDecision.Deny
 
-        approvalFlow.value = request
+        setApproval(request)
         val deferred = CompletableDeferred<ApprovalDecision>()
         val jobs = currentApprovers.map { approver ->
             launch {
@@ -275,7 +284,7 @@ object AgentImpl : Agent {
         try {
             deferred.await()
         } finally {
-            approvalFlow.value = null
+            setApproval(null)
             jobs.forEach { it.cancel() }
             allAbstained.cancel()
         }
@@ -285,12 +294,12 @@ object AgentImpl : Agent {
     internal fun clearForTest() {
         releaseRound()
         approvers.clear()
-        approvalFlow.value = null
+        setApproval(null)
         reduced = Reduced(Conversation())
         conversationFlow.value = Conversation()
         draftFlow.value = Draft()
         reducedStatus = AgentStateReducer.reset()
-        statusFlow.value = reducedStatus.status
+        setEngineStatus(reducedStatus.status)
         lastStatusEmitMs = 0L
     }
 
@@ -346,18 +355,18 @@ object AgentImpl : Agent {
             else -> false
         }
         if (direct) {
-            statusFlow.value = state
+            setEngineStatus(state)
             lastStatusEmitMs = nowMs()
             return
         }
         if (state is AgentState.Generating || state is AgentState.Thinking) {
             if (nowMs() - lastStatusEmitMs >= STATUS_TEXT_THROTTLE_MS) {
-                statusFlow.value = state
+                setEngineStatus(state)
                 lastStatusEmitMs = nowMs()
             }
             return
         }
-        statusFlow.value = state
+        setEngineStatus(state)
         lastStatusEmitMs = nowMs()
     }
 
@@ -366,7 +375,7 @@ object AgentImpl : Agent {
 
     /** 状态机外事件（发起/停止/打断/重置）：换态直通，不走文本节流。 */
     private fun emitStatus(state: AgentState) {
-        statusFlow.value = state
+        setEngineStatus(state)
         lastStatusEmitMs = nowMs()
     }
 

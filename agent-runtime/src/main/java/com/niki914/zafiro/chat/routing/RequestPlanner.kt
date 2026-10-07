@@ -34,6 +34,14 @@ internal object RequestPlanner {
         }.thenBy { if ("preview" in it || "exp" in it) 1 else 0 }.thenByDescending { it }).firstOrNull { "flash" in it }
         return (fast ?: configured) to if (fast == null) "configured" else "fast"
     }
+    /** Ordinary Flash requests should not inherit the upstream HIGH reasoning default. */
+    fun thinkingLevel(model: String, text: String, images: Boolean, budget: RequestBudget, configured: com.niki914.okia.message.ThinkingLevel?): com.niki914.okia.message.ThinkingLevel? {
+        val flashThinking = Regex("""^gemini-(2\.5|3[.-]).*flash""").containsMatchIn(model)
+        if (!flashThinking || images || complex(text) || budget == RequestBudget.Quality ||
+            configured == null || configured in setOf(com.niki914.okia.message.ThinkingLevel.OFF,
+                com.niki914.okia.message.ThinkingLevel.MINIMAL, com.niki914.okia.message.ThinkingLevel.LOW)) return configured
+        return com.niki914.okia.message.ThinkingLevel.LOW
+    }
     fun compact(history: List<Message>, turns: Int): List<Message> {
         val starts = history.indices.filter { history[it] is Message.User }
         if (starts.size <= turns) return history

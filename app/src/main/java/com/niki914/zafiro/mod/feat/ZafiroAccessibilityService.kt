@@ -54,6 +54,9 @@ class ZafiroAccessibilityService : AccessibilityService(), IAccessibility {
     override val windowRoot: AccessibilityNodeInfo?
         get() = rootInActiveWindow
 
+    override val keyboardRoots: List<AccessibilityNodeInfo>
+        get() = windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }.mapNotNull { it.root }
+
     override fun performAction(
         node: AccessibilityNodeInfo,
         action: Int,

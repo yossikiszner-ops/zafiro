@@ -52,6 +52,7 @@ import android.graphics.Rect as AndroidRect
  */
 interface IAccessibility {
     val windowRoot: AccessibilityNodeInfo?
+    val keyboardRoots: List<AccessibilityNodeInfo> get() = emptyList()
     fun performAction(node: AccessibilityNodeInfo, action: Int, text: String?): Boolean
     fun dispatchGesture(
         startX: Float,
@@ -76,6 +77,7 @@ object AccessibilityController {
     // 消费的英文契约文本，非 UI 本地化文案），与宿主渲染卡片的边界 hardcode 用途不同，
     // 保持英文原样，不资源化。
 
+    @Volatile var physicalKeyboardTyping: Boolean = false
     private var serviceInstance: IAccessibility? = null
     private val nodeCache = ConcurrentHashMap<Int, AccessibilityNodeInfo>()
 
@@ -92,6 +94,9 @@ object AccessibilityController {
     /** Set by the app module before any screen-interaction calls. */
     @Volatile
     var pointerOverlay: IPointerOverlay? = null
+
+    /** Reads actual accessibility state; does not request permissions or mutate expected identity. */
+    fun foregroundPackage(): String? = runCatching { serviceInstance?.windowRoot?.packageName?.toString() }.getOrNull()
 
     val observedPackage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private var pointerShown = false
@@ -786,6 +791,9 @@ object AccessibilityController {
         action: NodeAction,
         text: String?,
     ): BuiltinToolResult {
+        if (action == NodeAction.SET_TEXT && physicalKeyboardTyping && text != null) {
+            PhysicalKeyboardTyper.type(serviceInstance!!, node, text, pointerOverlay)?.let { return it }
+        }
         val actionInt = when (action) {
             NodeAction.CLICK -> ACTION_CLICK
             NodeAction.LONG_CLICK -> ACTION_LONG_CLICK

@@ -125,6 +125,21 @@ class LaunchAppBuiltin : BuiltinTool() {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             ?: return LaunchEvent.Failed("No launcher activity found for package '$packageName'.")
 
+        // Normal foreground app launch should not wait for root and Shizuku shell startups.
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            startActivity(launchIntent)
+            val controller = com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
+            if (controller.foregroundPackage() == null) return LaunchEvent.Launched
+            val visible = kotlinx.coroutines.withTimeoutOrNull(900) {
+                while (controller.foregroundPackage() != packageName) kotlinx.coroutines.delay(50)
+                true
+            } == true
+            if (visible) return LaunchEvent.Launched
+            // Android may silently deny background activity starts. Retain existing authority fallback.
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (_: Exception) { /* Existing privileged routes remain available when Android denies startActivity. */ }
+
         val componentName = launchIntent.component?.flattenToString()
         val command = if (componentName != null) {
             "am start -n '$componentName'"

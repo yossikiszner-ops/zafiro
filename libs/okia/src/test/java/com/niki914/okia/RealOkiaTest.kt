@@ -45,6 +45,36 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RealOkiaTest {
+    // Protects deterministic Android actions from calling the model or losing local conversation history.
+    @Test fun localTurnSkipsTheModelAndPersistsTheResult() = runTest {
+        var modelCalls = 0
+        val loop = FakeAgentLoop { _, _ -> modelCalls++; error("Local commands must not call the model") }
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), loop = loop, scope = testScope(testScheduler))
+        val events = mutableListOf<TurnEvent>()
+        val result = okia.send("open app", options = TurnOptions(localAction = LocalTurnAction {
+            AssistantMessage(listOf(ContentBlock.Text("launch accepted")), stopReason = StopReason.Stop)
+        })) { events += it }
+        assertEquals(0, modelCalls)
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
+        assertEquals(2, okia.export().entries.size)
+        okia.close()
+    }
+    @Test fun cancellingLocalActionReleasesTheTurnWithoutAnExtraModelCall() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
+        val task = async {
+            okia.send("open app", options = TurnOptions(localAction = LocalTurnAction {
+                entered.complete(Unit)
+                CompletableDeferred<AssistantMessage>().await()
+            })) {}
+        }
+        entered.await()
+        okia.stop()
+        assertTrue(task.await() is TurnResult.Aborted)
+        assertEquals(1, okia.export().entries.size)
+        okia.close()
+    }
+
 
     // ── fixtures ───────────────────────────────────────────────────────────
 

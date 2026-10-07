@@ -247,6 +247,7 @@ internal class VoiceSession(
     }
     fun stop() {
         epoch++
+        liveDisabled = false
         liveInput?.cancel(); liveInput = null
         VoiceActivity.liveTranscript.value = ""
         capture?.cancel(); capture = null; processing?.cancel(); processing = null
