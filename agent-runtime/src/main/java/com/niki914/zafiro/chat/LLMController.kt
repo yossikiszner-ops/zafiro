@@ -483,6 +483,11 @@ object LLMController {
                         text = effectiveQuery,
                         images = images,
                         options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt,
+                            loopOptions = com.niki914.okia.loop.LoopOptions(maxModelRounds = when (com.niki914.zafiro.chat.routing.RequestRouting.budget.value) {
+                                com.niki914.zafiro.chat.routing.RequestBudget.Economy -> 12
+                                com.niki914.zafiro.chat.routing.RequestBudget.Balanced -> 16
+                                com.niki914.zafiro.chat.routing.RequestBudget.Quality -> 32
+                            }),
                             localAction = if (images.isEmpty() && files.isEmpty())
                                 com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
                                     com.niki914.zafiro.chat.routing.DirectCommand.parse(query), state.snapshot.tools.builtinTools)

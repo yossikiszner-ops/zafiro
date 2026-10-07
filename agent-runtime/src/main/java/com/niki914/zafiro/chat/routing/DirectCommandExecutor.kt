@@ -18,10 +18,10 @@ import kotlinx.serialization.json.*
 
 /** Reuses installed-app resolution and Android authority; no API or synthetic clicks. */
 internal object DirectCommandExecutor {
-    fun action(command: DirectCommand?, tools: List<LocalTool.Builtin>): LocalTurnAction? {
+    fun action(command: DirectCommand?, tools: List<LocalTool>): LocalTurnAction? {
         command ?: return null
         val name = if (command is DirectCommand.Open) "launch_app" else "screen_operation_shell"
-        val tool = tools.firstOrNull { it.name == name } ?: return null // Honor disabled capabilities.
+        val tool = tools.filterIsInstance<LocalTool.Builtin>().firstOrNull { it.name == name } ?: return null // Honor disabled capabilities.
         return LocalTurnAction { emit ->
             val context = ContextProvider.await().applicationContext
             val call = ContentBlock.ToolCall(java.util.UUID.randomUUID().toString(), name,

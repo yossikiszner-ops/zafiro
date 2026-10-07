@@ -101,8 +101,13 @@ internal class RealAgentLoop : AgentLoop {
         // 回合累积历史：初始 = 请求历史（含当前输入），每轮产出追加。
         // 下一轮 buildRequest 用它（工具结果已回喂）。
         val history = baseHistory.toMutableList()
+        var modelRounds = 0
 
         while (true) {
+            if (modelRounds++ >= request.options.maxModelRounds.coerceAtLeast(1)) {
+                return failTurn(onEvent, AssistantMessage(emptyList()),
+                    LLMError(LLMErrorCode.ToolExecutionFailed, "Action step budget exhausted; stopped without repeating the workflow"))
+            }
             // 段执行（含回合层段首重试）；Finished = 回合终态已内部处理
             val assistant = when (val outcome = runSegment(request, onEvent, history)) {
                 is SegmentOutcome.Finished -> return outcome.result

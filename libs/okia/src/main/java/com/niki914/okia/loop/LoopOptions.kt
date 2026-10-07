@@ -8,7 +8,9 @@ import com.niki914.okia.error.RetryPolicy
  */
 data class LoopOptions(
     val segmentFailurePolicy: SegmentFailurePolicy = SegmentFailurePolicy.Discard,
-    val turnRetryPolicy: RetryPolicy? = null
+    val turnRetryPolicy: RetryPolicy? = null,
+    /** Bound tool/model cycles so a failed UI workflow cannot run indefinitely. */
+    val maxModelRounds: Int = 64
 )
 
 /**
