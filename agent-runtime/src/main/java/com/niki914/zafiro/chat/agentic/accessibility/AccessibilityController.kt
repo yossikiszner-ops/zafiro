@@ -652,29 +652,41 @@ object AccessibilityController {
      * with automatic shell fallback for non-SET_TEXT actions.
      */
     /** Fresh semantic resolution feeds the existing token/cursor/permission executor. */
-    suspend fun executeSemanticTarget(target: SemanticTarget, action: NodeAction, text: String? = null, expectedPackage: String? = null): BuiltinToolResult {
+    suspend fun executeSemanticTarget(target: SemanticTarget, action: NodeAction, text: String? = null,
+        expectedPackage: String? = null, preconditions: List<SemanticTarget> = emptyList()): BuiltinToolResult {
         try { refreshNodeCache() }
         catch (cancel: CancellationException) { throw cancel }
         catch (_: Exception) { return BuiltinToolResult.failure("SERVICE_UNAVAILABLE", "Screen unavailable") }
-        val matches = nodeCache.entries.filter { (_, node) ->
+        fun matches(node: AccessibilityNodeInfo, expected: SemanticTarget): Boolean =
             node.isVisibleToUser && node.isEnabled && !node.isPassword &&
                 (expectedPackage == null || node.packageName?.toString() == expectedPackage) &&
-                (target.editable == null || node.isEditable == target.editable) &&
-                (target.clickable == null || node.isClickable == target.clickable) &&
-                (target.resourceId == null || node.viewIdResourceName == target.resourceId) &&
-                (target.labels.isEmpty() || target.labels.any {
+                (expected.editable == null || node.isEditable == expected.editable) &&
+                (expected.clickable == null || node.isClickable == expected.clickable) &&
+                (expected.resourceId == null || node.viewIdResourceName == expected.resourceId) &&
+                (expected.exactText == null || node.text?.toString().orEmpty() == expected.exactText) &&
+                (expected.labels.isEmpty() || expected.labels.any {
                     it.equals(node.text?.toString()?.trim(), true) || it.equals(node.contentDescription?.toString()?.trim(), true)
                 })
-        }
-        val index = matches.singleOrNull()?.key
+        val entry = nodeCache.entries.filter { matches(it.value, target) }.singleOrNull()
             ?: return BuiltinToolResult.failure("TARGET_AMBIGUOUS_OR_MISSING", "No unique semantic target")
-        return executeNodeAction("${currentVersion}_${index}", action, text)
+        val required = preconditions.map { expected ->
+            val node = nodeCache.values.filter { matches(it, expected) }.singleOrNull()
+                ?: return BuiltinToolResult.failure("PRECONDITION_CHANGED", "Expected conversation or text changed")
+            node to expected
+        }
+        return executeNodeAction(currentVersion + "_" + entry.key, action, text) {
+            // Revalidate after cursor movement, immediately before Android authority executes.
+            (expectedPackage == null || foregroundPackage() == expectedPackage) &&
+                entry.value.refresh() && matches(entry.value, target) &&
+                required.all { (node, expected) -> node.refresh() && matches(node, expected) }
+        }
     }
 
     suspend fun executeNodeAction(
         token: String,
         action: NodeAction,
         text: String?,
+        validate: (() -> Boolean)? = null,
     ): BuiltinToolResult {
         ensureService().getOrElse { e ->
             return BuiltinToolResult.failure(
@@ -711,7 +723,8 @@ object AccessibilityController {
         val nodeRect = AndroidRect()
         node.getBoundsInScreen(nodeRect)
         return PointerActionCoordinator.execute(pointerOverlay, nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat()) {
-            executeAccessibilityAction(node, st.index, action, text)
+            if (validate?.invoke() == false) BuiltinToolResult.failure("PRECONDITION_CHANGED", "Target or conversation changed")
+            else executeAccessibilityAction(node, st.index, action, text)
         }
     }
 

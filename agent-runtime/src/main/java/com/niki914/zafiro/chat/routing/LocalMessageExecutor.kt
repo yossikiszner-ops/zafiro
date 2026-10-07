@@ -72,10 +72,11 @@ internal object LocalMessageExecutor {
                         LocalTaskPlan.Phase.Approval -> error("Approval is handled separately")
                     }
                     run(label) {
+                        if (instruction.target != null) awaitScreen { task.canExecute(instruction, it) }
                         val result = when (instruction.action) {
                             LocalTaskPlan.Action.Launch -> launch.tool.invoke(BuiltinToolRequest("launch_app", "{\"app_name\":\"WhatsApp\"}"))
                             LocalTaskPlan.Action.Tap -> AccessibilityController.executeSemanticTarget(
-                                instruction.target!!, NodeAction.CLICK, expectedPackage = task.packageName)
+                                instruction.target!!, NodeAction.CLICK, expectedPackage = task.packageName, preconditions = instruction.preconditions)
                             LocalTaskPlan.Action.SetText -> AccessibilityController.executeSemanticTarget(
                                 instruction.target!!, NodeAction.SET_TEXT, instruction.text, expectedPackage = task.packageName)
                             LocalTaskPlan.Action.Approval -> error("Approval is handled separately")

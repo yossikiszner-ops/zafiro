@@ -28,6 +28,18 @@ class LocalTaskPlanTest {
         val duplicate = conversation("אמא", "").let { it.copy(elements = it.elements + it.elements.first()) }
         assertFalse(plan.matches(open, duplicate))
     }
+    @Test fun userEditsOrConversationChangesBlockMutationAtExecutionTime() {
+        val compose = plan.steps[4]
+        assertTrue(plan.canExecute(compose, conversation("אמא", "")))
+        assertFalse(plan.canExecute(compose, conversation("אמא", "user draft")))
+        assertFalse(plan.canExecute(compose, conversation("יוסי", "")))
+        val send = plan.steps.last()
+        fun withSend(screen: ScreenState) = screen.copy(elements = screen.elements +
+            ScreenElement("2", "com.whatsapp:id/send", "Button", "", "", true, false, true, false, emptyList()))
+        assertTrue(plan.canExecute(send, withSend(conversation("אמא", "לילה טוב"))))
+        assertFalse(plan.canExecute(send, withSend(conversation("אמא", "changed by user"))))
+        assertFalse(plan.canExecute(send, withSend(conversation("יוסי", "לילה טוב"))))
+    }
     @Test fun compositionAndSubmissionVerifyExactTextWithoutDeliveryClaims() {
         assertTrue(plan.matches(plan.steps[4], conversation("אמא", "לילה טוב")))
         assertFalse(plan.matches(plan.steps[4], conversation("אמא", "לילה")))

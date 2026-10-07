@@ -27,6 +27,7 @@ data class ScreenState(
         it.enabled && (target.editable == null || it.editable == target.editable) &&
             (target.clickable == null || it.clickable == target.clickable) &&
             (target.resourceId == null || it.resourceId == target.resourceId) &&
+            (target.exactText == null || it.text == target.exactText) &&
             (target.labels.isEmpty() || target.labels.any { label ->
                 label.equals(it.text.trim(), true) || label.equals(it.description.trim(), true)
             })
@@ -40,6 +41,7 @@ data class SemanticTarget(
     val labels: Set<String> = emptySet(),
     val editable: Boolean? = null,
     val clickable: Boolean? = null,
+    val exactText: String? = null,
 )
 
 /** Bounded structural memory: no contact names, messages, screenshots or raw UI text. */
