@@ -37,4 +37,21 @@
     <string name="network_lock">Restrict managed connections</string>
     <string name="network_scope">AI and MCP connections are limited to configured destinations. Local scripts require approval and can use their own network connections. This is not a device firewall.</string>
     <string name="voice_working">Working… · Stop</string>
+    <string name="glass_preset_signature">Zafiro Signature</string>
+    <string name="glass_preset_pure">Pure Glass</string>
+    <string name="glass_preset_obsidian">Obsidian</string>
+    <string name="glass_preset_cinematic">Cinematic</string>
+    <string name="glass_preset_invisible">Invisible Presence</string>
+    <string name="glass_presence_eyes">Optical eyes</string>
+    <string name="glass_presence_prism">Prism core</string>
+    <string name="glass_presence_pulse">Pulse core</string>
+    <string name="glass_presence_constellation">Constellation</string>
+    <string name="glass_presence_glyph">Liquid glyph</string>
+    <string name="glass_presence_aperture">Aperture</string>
+    <string name="glass_presence_slit">Light slit</string>
+    <string name="glass_presence_waveform">Waveform</string>
+    <string name="glass_presence_fireflies">Firefly field</string>
+    <string name="glass_presence_orbital">Orbital core</string>
+    <string name="glass_presence_ink">Ink drop</string>
+    <string name="glass_presence_invisible">Disabled</string>
 </resources>

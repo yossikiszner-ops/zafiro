@@ -19,26 +19,20 @@ internal object GlassPreferences {
     val reducedMotion = MutableStateFlow(false)
     fun load(context: Context) {
         val p = context.getSharedPreferences("zafiro_glass", Context.MODE_PRIVATE)
-        appearance.value = ZafiroGlassAppearance(
-            darkness = p.getFloat("darkness", .82f).coerceIn(0f, 1f),
-            transparency = p.getFloat("transparency", .18f).coerceIn(0f, 1f),
-            opticalThickness = p.getFloat("thickness", .72f).coerceIn(0f, 1f),
-            reflection = p.getFloat("reflection", .58f).coerceIn(0f, 1f),
-            edgeBrightness = p.getFloat("edge", .46f).coerceIn(0f, 1f),
-            curvature = p.getFloat("curvature", .88f).coerceIn(0f, 1f),
-            presence = runCatching { ZafiroPresenceStyle.valueOf(p.getString("presence", "PrismCore") ?: "PrismCore") }.getOrDefault(ZafiroPresenceStyle.PrismCore),
-            presenceIntensity = p.getFloat("intensity", .72f).coerceIn(0f, 1f),
-        )
+        appearance.value = GlassAppearanceCodec.decode(p.all)
+
         reducedMotion.value = p.getBoolean("reduced_motion", false)
     }
     fun save(context: Context, a: ZafiroGlassAppearance, reduced: Boolean) {
         appearance.value = a; reducedMotion.value = reduced
-        context.getSharedPreferences("zafiro_glass", Context.MODE_PRIVATE).edit()
-            .putFloat("darkness", a.darkness).putFloat("transparency", a.transparency)
-            .putFloat("thickness", a.opticalThickness).putFloat("reflection", a.reflection)
-            .putFloat("edge", a.edgeBrightness).putFloat("curvature", a.curvature)
-            .putString("presence", a.presence.name).putFloat("intensity", a.presenceIntensity)
-            .putBoolean("reduced_motion", reduced).apply()
+        val editor = context.getSharedPreferences("zafiro_glass", Context.MODE_PRIVATE).edit()
+        GlassAppearanceCodec.encode(a).forEach { (key, value) ->
+            when (value) {
+                is Float -> editor.putFloat(key, value)
+                is String -> editor.putString(key, value)
+            }
+        }
+        editor.putBoolean("reduced_motion", reduced).apply()
     }
 }
 
@@ -55,10 +49,12 @@ internal fun GlassAppearanceSettings(onDismiss: () -> Unit) {
             Box {
                 TextButton(onClick = { presetMenu = true }) { Text(stringResource(R.string.glass_presets)) }
                 DropdownMenu(presetMenu, { presetMenu = false }) {
-                    listOf("Zafiro Signature" to ZafiroGlassPresets.Signature, "Pure Glass" to ZafiroGlassPresets.PureGlass,
-                        "Obsidian" to ZafiroGlassPresets.Obsidian, "Cinematic" to ZafiroGlassPresets.Cinematic,
-                        "Invisible Presence" to ZafiroGlassPresets.Invisible).forEach { (name, preset) ->
-                        DropdownMenuItem(text = { Text(name) }, onClick = { a = preset; presetMenu = false })
+                    listOf(R.string.glass_preset_signature to ZafiroGlassPresets.Signature,
+                        R.string.glass_preset_pure to ZafiroGlassPresets.PureGlass,
+                        R.string.glass_preset_obsidian to ZafiroGlassPresets.Obsidian,
+                        R.string.glass_preset_cinematic to ZafiroGlassPresets.Cinematic,
+                        R.string.glass_preset_invisible to ZafiroGlassPresets.Invisible).forEach { (name, preset) ->
+                        DropdownMenuItem(text = { Text(stringResource(name)) }, onClick = { a = preset; presetMenu = false })
                     }
                 }
             }
@@ -69,9 +65,9 @@ internal fun GlassAppearanceSettings(onDismiss: () -> Unit) {
             GlassSlider(R.string.glass_edge, a.edgeBrightness) { a = a.copy(edgeBrightness = it) }
             GlassSlider(R.string.glass_curvature, a.curvature) { a = a.copy(curvature = it) }
             Box {
-                TextButton(onClick = { presenceMenu = true }) { Text(stringResource(R.string.glass_presence) + ": " + a.presence.name) }
+                TextButton(onClick = { presenceMenu = true }) { Text(stringResource(R.string.glass_presence) + ": " + stringResource(presenceLabel(a.presence))) }
                 DropdownMenu(presenceMenu, { presenceMenu = false }) {
-                    ZafiroPresenceStyle.entries.forEach { style -> DropdownMenuItem(text = { Text(style.name) }, onClick = { a = a.copy(presence = style); presenceMenu = false }) }
+                    ZafiroPresenceStyle.entries.forEach { style -> DropdownMenuItem(text = { Text(stringResource(presenceLabel(style))) }, onClick = { a = a.copy(presence = style); presenceMenu = false }) }
                 }
             }
             GlassSlider(R.string.glass_intensity, a.presenceIntensity) { a = a.copy(presenceIntensity = it) }
@@ -82,4 +78,19 @@ internal fun GlassAppearanceSettings(onDismiss: () -> Unit) {
 @Composable
 private fun GlassSlider(label: Int, value: Float, onChange: (Float) -> Unit) {
     Text(stringResource(label)); Slider(value, onChange, valueRange = 0f..1f)
+}
+
+private fun presenceLabel(style: ZafiroPresenceStyle): Int = when (style) {
+    ZafiroPresenceStyle.OpticalEyes -> R.string.glass_presence_eyes
+    ZafiroPresenceStyle.PrismCore -> R.string.glass_presence_prism
+    ZafiroPresenceStyle.PulseCore -> R.string.glass_presence_pulse
+    ZafiroPresenceStyle.Constellation -> R.string.glass_presence_constellation
+    ZafiroPresenceStyle.LiquidGlyph -> R.string.glass_presence_glyph
+    ZafiroPresenceStyle.Aperture -> R.string.glass_presence_aperture
+    ZafiroPresenceStyle.LightSlit -> R.string.glass_presence_slit
+    ZafiroPresenceStyle.WaveformSoul -> R.string.glass_presence_waveform
+    ZafiroPresenceStyle.FireflyField -> R.string.glass_presence_fireflies
+    ZafiroPresenceStyle.OrbitalCore -> R.string.glass_presence_orbital
+    ZafiroPresenceStyle.InkDrop -> R.string.glass_presence_ink
+    ZafiroPresenceStyle.Invisible -> R.string.glass_presence_invisible
 }

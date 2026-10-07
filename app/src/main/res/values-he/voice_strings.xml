@@ -37,4 +37,21 @@
     <string name="network_lock">הגבלת חיבורי הסוכן</string>
     <string name="network_scope">חיבורי AI ו־MCP מוגבלים ליעדים שהוגדרו. סקריפטים מקומיים דורשים אישור ויכולים ליצור חיבורי רשת משלהם. ההגבלה אינה חומת אש של המכשיר.</string>
     <string name="voice_working">פועל… · עצירה</string>
+    <string name="glass_preset_signature">הסגנון של Zafiro</string>
+    <string name="glass_preset_pure">זכוכית צלולה</string>
+    <string name="glass_preset_obsidian">אובסידיאן</string>
+    <string name="glass_preset_cinematic">קולנועי</string>
+    <string name="glass_preset_invisible">ללא נוכחות</string>
+    <string name="glass_presence_eyes">עיניים אופטיות</string>
+    <string name="glass_presence_prism">ליבת מנסרה</string>
+    <string name="glass_presence_pulse">ליבה פועמת</string>
+    <string name="glass_presence_constellation">קבוצת כוכבים</string>
+    <string name="glass_presence_glyph">סמל נוזלי</string>
+    <string name="glass_presence_aperture">צמצם</string>
+    <string name="glass_presence_slit">חריץ אור</string>
+    <string name="glass_presence_waveform">גל קול</string>
+    <string name="glass_presence_fireflies">שדה גחליליות</string>
+    <string name="glass_presence_orbital">ליבה מסלולית</string>
+    <string name="glass_presence_ink">טיפת דיו</string>
+    <string name="glass_presence_invisible">כבויה</string>
 </resources>
