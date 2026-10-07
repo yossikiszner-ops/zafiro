@@ -31,6 +31,26 @@ jobs:
         run: ./gradlew :app:assembleDebug --stacktrace
       - name: Unit tests
         run: ./gradlew testDebugUnitTest :agent-runtime:testPythonRuntime --stacktrace
+      - name: Python updater regression fixtures
+        run: |
+          python3 -m pip install 'pytest==8.3.5'
+          python3 -m pytest app/src/test/python -q
+      - name: Record JVM test totals
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, json, pathlib, xml.etree.ElementTree as ET
+          reports = []
+          for path in glob.glob("**/build/test-results/testDebugUnitTest/TEST-*.xml", recursive=True):
+              root = ET.parse(path).getroot()
+              reports.append({key: int(root.get(key, 0)) for key in ("tests", "failures", "errors", "skipped")})
+              for line in root.findtext("system-out", "").splitlines():
+                  if line.startswith("LOCAL_ROUTER_BENCHMARK "):
+                      print(line)
+          total = {key: sum(report[key] for report in reports) for key in ("tests", "failures", "errors", "skipped")}
+          pathlib.Path("validation-summary.json").write_text(json.dumps(total, indent=2))
+          print("JVM_TEST_TOTALS " + json.dumps(total, sort_keys=True))
+          PY
       - name: Detect configured release signing
         id: signing
         env:
@@ -76,4 +96,5 @@ jobs:
           path: |
             **/build/reports/tests/
             **/build/test-results/
+            validation-summary.json
           if-no-files-found: ignore

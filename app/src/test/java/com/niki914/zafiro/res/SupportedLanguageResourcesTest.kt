@@ -23,6 +23,8 @@ class SupportedLanguageResourcesTest {
         assertEquals("הגדרות", hebrew.getString(R.string.ui_settings_title))
         assertEquals(View.LAYOUT_DIRECTION_RTL, hebrew.resources.configuration.layoutDirection)
         assertEquals("Settings", english.getString(R.string.ui_settings_title))
+        assertEquals("בינה מקומית", hebrew.getString(R.string.local_ai_title))
+        assertEquals("Local AI", english.getString(R.string.local_ai_title))
         assertEquals(View.LAYOUT_DIRECTION_LTR, english.resources.configuration.layoutDirection)
         assertEquals("ניסיון 2 מתוך 4", hebrew.getString(R.string.ui_home_retrying_attempt, 2, 4))
     }
