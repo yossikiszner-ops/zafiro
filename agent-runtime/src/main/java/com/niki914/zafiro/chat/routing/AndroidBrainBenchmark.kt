@@ -20,6 +20,10 @@ object AndroidBrainBenchmark {
         Task("en-recovery", "Dismiss the unexpected dialog and resume the original search", InputMode.Combined, true, true),
         Task("he-tree", "מצא את כפתור החזרה", InputMode.Accessibility),
         Task("en-tree", "Locate the Back control", InputMode.Accessibility),
+        Task("he-whatsapp", "פתח וואטסאפ, מצא את איש הקשר לבדיקה והכן הודעה: אני בדרך. אל תשלח עדיין", InputMode.Combined, true),
+        Task("en-whatsapp", "Open WhatsApp, find the test contact and draft: I am on my way. Do not send yet", InputMode.Combined, true),
+        Task("he-form", "מלא בטופס הבדיקה שם יוסי ועיר ירושלים בלי לשלוח את הטופס", InputMode.Combined, true),
+        Task("en-form", "Fill the test form with name Yossi and city Jerusalem without submitting", InputMode.Combined, true),
     )
     data class Measurement(
         val candidate: String, val taskId: String, val device: String,
