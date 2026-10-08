@@ -66,6 +66,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
             ModelArtifact.candidates.forEach { artifact ->
                 val verified = artifact in found && model(artifact).isFile
                 update(artifact, ModelDownloadState(part(artifact).length(), verified))
+                if (!verified && LocalCommandRuntime.selectedModel.value == artifact.id) LocalCommandRuntime.forget(artifact)
             }
             scanning.value = false
             if (!preferences.getBoolean("startup-model-choice-dismissed", false) &&
@@ -153,6 +154,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
     fun setMode(mode: IntelligenceMode) {
         LocalIntelligence.mode.value = mode
         getApplication<Application>().getSharedPreferences("local-ai", 0).edit().putString("mode", mode.name).apply()
+        if (mode == IntelligenceMode.FastLocal && !preferences.contains("cloud-fallback")) setCloudFallback(false)
         if (mode == IntelligenceMode.CloudQuality) LocalCommandRuntime.unload()
     }
     fun benchmark(a: ModelArtifact) {

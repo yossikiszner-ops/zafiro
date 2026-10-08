@@ -49,7 +49,7 @@ class App : Application() {
         com.niki914.zafiro.chat.routing.LocalIntelligence.mode.value = runCatching {
             com.niki914.zafiro.chat.routing.IntelligenceMode.valueOf(getSharedPreferences("local-ai", MODE_PRIVATE).getString("mode", "Balanced") ?: "Balanced")
         }.getOrDefault(com.niki914.zafiro.chat.routing.IntelligenceMode.Balanced)
-        com.niki914.zafiro.chat.routing.LocalIntelligence.allowCloudFallback.value = getSharedPreferences("local-ai", MODE_PRIVATE).getBoolean("cloud-fallback", true)
+        com.niki914.zafiro.chat.routing.LocalIntelligence.allowCloudFallback.value = getSharedPreferences("local-ai", MODE_PRIVATE).getBoolean("cloud-fallback", false)
         com.niki914.zafiro.chat.routing.NetworkPolicy.trustedScripts.value = getSharedPreferences("local-ai", MODE_PRIVATE).getBoolean("trusted-scripts", false)
         com.niki914.zafiro.chat.routing.LocalIntelligence.allowMessageSending.value = getSharedPreferences("local-ai", MODE_PRIVATE).getBoolean("allow-message-sending", false)
         com.niki914.zafiro.app.voice.GlassPreferences.load(applicationContext)
