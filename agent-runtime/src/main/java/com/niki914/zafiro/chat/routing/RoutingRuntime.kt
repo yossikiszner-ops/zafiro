@@ -23,6 +23,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
     fun updateProxy(url: String) = engine.updateProxy(url)
 
     override suspend fun beforeSerialization(request: SerializationHolder) {
+        LocalIntelligence.requireCloudPermission()
         val snapshot = request.snapshot
         val now = System.currentTimeMillis()
         val google = runCatching { URI(snapshot.endpoint).host == "generativelanguage.googleapis.com" }.getOrDefault(false)
@@ -50,6 +51,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
         RequestRouting.latest.value = RouteObservation(chosen, reason, tools = tools.size, totalTools = snapshot.tools.size, retainedMessages = compact.size, totalMessages = history.size)
     }
     override suspend fun stream(request: HttpRequest): StreamResponse {
+        LocalIntelligence.requireCloudPermission()
         check(NetworkPolicy.permits(request.url)) { "Network destination is not configured or enabled" }
         val start = System.currentTimeMillis()
         val model = runCatching { json.parseToJsonElement(request.body.orEmpty()).jsonObject["model"]?.jsonPrimitive?.content }.getOrNull().orEmpty()
@@ -101,6 +103,7 @@ internal object RoutingRuntime : Hooks, HttpEngine {
     }
     override suspend fun beforeToolCall(call: com.niki914.okia.hooks.ToolCallHolder) = NetworkPolicy.approveScript(call)
     override suspend fun unary(request: HttpRequest): HttpResponse {
+        LocalIntelligence.requireCloudPermission()
         check(NetworkPolicy.permits(request.url)) { "Network destination is not configured or enabled" }
         return engine.unary(request)
     }

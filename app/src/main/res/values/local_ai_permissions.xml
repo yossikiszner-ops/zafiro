@@ -1,0 +1,8 @@
+<resources>
+    <string name="local_ai_cloud_fallback">Allow cloud fallback in Fast Local</string>
+    <string name="local_ai_cloud_fallback_scope">When disabled, unsupported local requests stop without contacting the AI provider. Cloud voice output is configured separately.</string>
+    <string name="local_ai_trusted_scripts">Always allow local scripts</string>
+    <string name="local_ai_trusted_scripts_scope">Allows Python and other local scripts to access files and network without repeated script prompts. Sensitive action approvals remain active.</string>
+    <string name="local_ai_allow_messages">Preapprove WhatsApp message sending</string>
+    <string name="local_ai_allow_messages_scope">Send messages you request without an extra confirmation. Recipient and exact text are still verified. Disable anytime; payments and deletions remain subject to approval.</string>
+</resources>

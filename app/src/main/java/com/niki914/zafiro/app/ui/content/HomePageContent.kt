@@ -158,6 +158,7 @@ fun HomePageContent(
     onOpenSettings: () -> Unit,
 ) {
     val viewModel = pageViewModel<HomeChatViewModel>()
+    com.niki914.zafiro.app.localai.LocalAiStartup()
     val newConversationMenuLabel = stringResource(R.string.ui_home_menu_new_conversation)
     val settingsMenuLabel = stringResource(R.string.ui_settings_menu_entry)
     val historyContentDescription = stringResource(R.string.ui_home_history_content_description)

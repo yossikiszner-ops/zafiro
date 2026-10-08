@@ -11,6 +11,14 @@ data class RouteDiagnostics(val route: String, val routingMs: Long, val escalati
 /** Host provides optional inference. This never provides an Android action authority. */
 object LocalIntelligence {
     val mode = MutableStateFlow(IntelligenceMode.Balanced)
+    val allowCloudFallback = MutableStateFlow(true)
+    val allowMessageSending = MutableStateFlow(false)
+    fun requireCloudPermission() {
+        check(mode.value != IntelligenceMode.FastLocal || allowCloudFallback.value) {
+            diagnostics.value = diagnostics.value.copy(route = "LOCAL_ONLY_BLOCKED", escalation = "Cloud fallback disabled")
+            "Local-only mode: no supported local plan. Enable cloud fallback in Local AI settings to continue."
+        }
+    }
     val diagnostics = MutableStateFlow(RouteDiagnostics("NONE", 0))
     @Volatile var interpreter: (suspend (String) -> LocalInterpretation?)? = null
 
@@ -18,7 +26,11 @@ object LocalIntelligence {
         if (mode.value == IntelligenceMode.CloudQuality) return null
         val domain = TinyIntentRouter.classify(input)
         if (domain.domain != TinyIntentRouter.Domain.Android && domain.margin >= 0.1) return null
-        val budgetMs = if (mode.value == IntelligenceMode.FastLocal) 1_600L else 500L
+        val budgetMs = when {
+            mode.value == IntelligenceMode.FastLocal && !allowCloudFallback.value -> 30_000L
+            mode.value == IntelligenceMode.FastLocal -> 1_600L
+            else -> 500L
+        }
         val result = try { withTimeoutOrNull(budgetMs) { interpreter?.invoke(input) } }
             catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { null } ?: return null

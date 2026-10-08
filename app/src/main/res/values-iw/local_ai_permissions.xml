@@ -1,0 +1,8 @@
+<resources>
+    <string name="local_ai_cloud_fallback">אפשר מעבר לענן במצב מקומי מהיר</string>
+    <string name="local_ai_cloud_fallback_scope">כאשר כבוי, בקשות שאינן נתמכות מקומית נעצרות בלי פנייה לספק הבינה. קול בענן מוגדר בנפרד.</string>
+    <string name="local_ai_trusted_scripts">אישור קבוע לסקריפטים מקומיים</string>
+    <string name="local_ai_trusted_scripts_scope">מאפשר לסקריפטים כגון Python גישה לקבצים ולרשת בלי אישור סקריפט חוזר. אישורים לפעולות רגישות נשארים פעילים.</string>
+    <string name="local_ai_allow_messages">אישור קבוע לשליחת הודעות WhatsApp</string>
+    <string name="local_ai_allow_messages_scope">מאפשר לשלוח את ההודעות שביקשת בלי אישור נוסף. הנמען ותוכן ההודעה נבדקים לפני השליחה. ניתן לכבות בכל עת; תשלומים ומחיקות אינם מאושרים.</string>
+</resources>

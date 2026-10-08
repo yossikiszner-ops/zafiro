@@ -1,6 +1,7 @@
 package com.niki914.zafiro.app.localai
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.niki914.zafiro.app.R
@@ -22,6 +23,8 @@ import java.util.concurrent.TimeUnit
 data class ModelDownloadState(val completed: Long = 0, val installed: Boolean = false,
     val downloading: Boolean = false, val status: Int? = null, val benchmark: LocalBenchmark? = null)
 
+enum class LocalModelPrompt { Hidden, Install, Choose }
+
 /** UI sends intents; downloads and verified atomic installation belong to this lifecycle owner. */
 class LocalAiViewModel(application: Application) : AndroidViewModel(application) {
     private val directory = File(application.noBackupFilesDir, "local-models").apply { mkdirs() }
@@ -29,11 +32,95 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
     private val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS).followSslRedirects(false).build()
     private val current = MutableStateFlow(ModelArtifact.candidates.associate { artifact -> artifact.id to
-        ModelDownloadState(part(artifact).length(), model(artifact).isFile) })
+        ModelDownloadState(part(artifact).length()) })
     val state = current.asStateFlow()
     private val preferences = application.getSharedPreferences("local-ai", 0)
     private val wifi = MutableStateFlow(preferences.getBoolean("wifi-only", true))
     val wifiOnly = wifi.asStateFlow()
+    private val prompt = MutableStateFlow(LocalModelPrompt.Hidden)
+    val startupPrompt = prompt.asStateFlow()
+    private val scanning = MutableStateFlow(true)
+    val discovering = scanning.asStateFlow()
+    private val importMessage = MutableStateFlow<Int?>(null)
+    val importStatus = importMessage.asStateFlow()
+    private val settingsVisible = MutableStateFlow(false)
+    val showStartupSettings = settingsVisible.asStateFlow()
+    init {
+        viewModelScope.launch {
+            val found = try { withContext(Dispatchers.IO) {
+                val roots = listOf(directory, application.filesDir) + application.getExternalFilesDirs(null).filterNotNull()
+                LocalModelDiscovery.discover(roots).also { discovered ->
+                    for ((artifact, source) in discovered) {
+                        if (source.canonicalPath != model(artifact).canonicalPath) {
+                            if (!ModelTransferPolicy.storageAvailable(directory.usableSpace, 0, artifact.bytes)) continue
+                            val temp = File(directory, "${artifact.id}.discovered")
+                            source.copyTo(temp, overwrite = true)
+                            if (artifact.verify(temp)) Files.move(temp.toPath(), model(artifact).toPath(),
+                                StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                            else temp.delete()
+                        }
+                    }
+                }
+            } } catch (cancel: CancellationException) { throw cancel }
+            catch (_: Exception) { importMessage.value = R.string.local_ai_discovery_failed; emptyMap() }
+            ModelArtifact.candidates.forEach { artifact ->
+                val verified = artifact in found && model(artifact).isFile
+                update(artifact, ModelDownloadState(part(artifact).length(), verified))
+            }
+            scanning.value = false
+            if (!preferences.getBoolean("startup-model-choice-dismissed", false) &&
+                LocalCommandRuntime.selectedModel.value == null) {
+                prompt.value = if (current.value.values.any { it.installed }) LocalModelPrompt.Choose else LocalModelPrompt.Install
+            }
+        }
+    }
+    fun dismissStartupPrompt() {
+        prompt.value = LocalModelPrompt.Hidden
+        preferences.edit().putBoolean("startup-model-choice-dismissed", true).apply()
+    }
+    fun openStartupModels() {
+        dismissStartupPrompt()
+        settingsVisible.value = true
+    }
+    fun closeStartupModels() { settingsVisible.value = false }
+    fun importModel(uri: Uri) {
+        if (scanning.value || jobs.values.any { !it.isCompleted }) return
+        jobs["import"] = viewModelScope.launch {
+            importMessage.value = R.string.local_ai_importing
+            val temp = File(directory, "selected-model.importing")
+            try {
+                val artifact = withContext(Dispatchers.IO) {
+                    val largest = ModelArtifact.candidates.maxOf { it.bytes }
+                    if (directory.usableSpace < largest + 64L * 1024 * 1024) throw StorageException()
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(temp).use { output ->
+                            val buffer = ByteArray(128 * 1024)
+                            var count = 0L
+                            while (true) {
+                                currentCoroutineContext().ensureActive()
+                                val size = input.read(buffer)
+                                if (size < 0) break
+                                count += size
+                                if (count > largest) throw IntegrityException()
+                                output.write(buffer, 0, size)
+                            }
+                            output.fd.sync()
+                        }
+                    } ?: throw IntegrityException()
+                    val known = ModelArtifact.candidates.firstOrNull { it.bytes == temp.length() && it.verify(temp) }
+                        ?: throw IntegrityException()
+                    LocalCommandRuntime.forget(known)
+                    Files.move(temp.toPath(), model(known).toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    known
+                }
+                update(artifact, ModelDownloadState(artifact.bytes, true, status = R.string.local_ai_installed))
+                importMessage.value = R.string.local_ai_imported
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (failure: Exception) {
+                importMessage.value = if (failure is StorageException) R.string.local_ai_storage else R.string.local_ai_import_unsupported
+            } finally { withContext(NonCancellable + Dispatchers.IO) { temp.delete() } }
+        }
+    }
     fun setWifiOnly(enabled: Boolean) { wifi.value = enabled; preferences.edit().putBoolean("wifi-only", enabled).apply() }
     private fun model(a: ModelArtifact) = File(directory, "${a.id}.litertlm")
     private fun part(a: ModelArtifact) = File(directory, "${a.id}.partial")
@@ -44,12 +131,24 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
         val previous = jobs[a.id]
         val deletion = viewModelScope.launch(start = CoroutineStart.LAZY) {
             previous?.cancelAndJoin()
-            LocalCommandRuntime.unloadAndWait()
+            LocalCommandRuntime.forget(a)
             withContext(Dispatchers.IO) { model(a).delete(); part(a).delete() }
             update(a, ModelDownloadState())
         }
         jobs[a.id] = deletion
         deletion.start()
+    }
+    fun setCloudFallback(enabled: Boolean) {
+        LocalIntelligence.allowCloudFallback.value = enabled
+        preferences.edit().putBoolean("cloud-fallback", enabled).apply()
+    }
+    fun setTrustedScripts(enabled: Boolean) {
+        com.niki914.zafiro.chat.routing.NetworkPolicy.trustedScripts.value = enabled
+        preferences.edit().putBoolean("trusted-scripts", enabled).apply()
+    }
+    fun setMessageSending(enabled: Boolean) {
+        LocalIntelligence.allowMessageSending.value = enabled
+        preferences.edit().putBoolean("allow-message-sending", enabled).apply()
     }
     fun setMode(mode: IntelligenceMode) {
         LocalIntelligence.mode.value = mode
@@ -57,13 +156,13 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
         if (mode == IntelligenceMode.CloudQuality) LocalCommandRuntime.unload()
     }
     fun benchmark(a: ModelArtifact) {
-        if (jobs[a.id]?.isCompleted == false || !model(a).isFile) return
+        if (scanning.value || jobs[a.id]?.isCompleted == false || !model(a).isFile) return
         jobs[a.id] = viewModelScope.launch {
             update(a, current.value.getValue(a.id).copy(status = R.string.local_ai_benchmark_running))
             try {
                 val result = LocalCommandRuntime.benchmark(getApplication(), a)
-                update(a, current.value.getValue(a.id).copy(status = null, benchmark = result))
-                if (result.correct == result.total && result.warmMs <= 1500) setMode(IntelligenceMode.FastLocal)
+                update(a, current.value.getValue(a.id).copy(status = if (result.correct == result.total) R.string.local_ai_ready else R.string.local_ai_accuracy_failed, benchmark = result))
+                if (result.correct == result.total) { setMode(IntelligenceMode.FastLocal); dismissStartupPrompt() }
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { update(a, current.value.getValue(a.id).copy(status = R.string.local_ai_benchmark_failed)) }
             catch (_: LinkageError) { update(a, current.value.getValue(a.id).copy(status = R.string.local_ai_benchmark_failed)) }
@@ -71,7 +170,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
     }
     @OptIn(InternalCoroutinesApi::class)
     fun download(a: ModelArtifact) {
-        if (jobs[a.id]?.isCompleted == false) return
+        if (scanning.value || jobs[a.id]?.isCompleted == false || jobs["import"]?.isCompleted == false) return
         jobs[a.id] = viewModelScope.launch {
             update(a, ModelDownloadState(part(a).length(), model(a).isFile, true))
             try {
@@ -122,6 +221,8 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
                     Files.move(temp.toPath(), model(a).toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
                 }
                 update(a, ModelDownloadState(a.bytes, true, status = R.string.local_ai_installed))
+                jobs.remove(a.id)
+                benchmark(a)
             } catch (cancel: CancellationException) {
                 update(a, ModelDownloadState(part(a).length(), model(a).isFile, status = R.string.local_ai_paused))
                 throw cancel

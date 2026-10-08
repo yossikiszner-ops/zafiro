@@ -13,6 +13,7 @@ import java.net.URI
 /** Applies to managed AI/MCP transport. Arbitrary local scripts require separate consent. */
 object NetworkPolicy {
     val enabled = MutableStateFlow(true)
+    val trustedScripts = MutableStateFlow(false)
     val destinations = MutableStateFlow<List<String>>(emptyList())
     private var allowed = emptySet<String>()
     fun configure(urls: List<String>) {
@@ -27,7 +28,7 @@ object NetworkPolicy {
         "$scheme://$host" + if (uri.port != -1 && !(scheme == "https" && uri.port == 443) && !(scheme == "http" && uri.port == 80)) ":${uri.port}" else ""
     }.getOrNull()
     internal suspend fun approveScript(call: ToolCallHolder) {
-        if (!enabled.value || call.descriptor.kind !is ToolKind.Local) return
+        if (!enabled.value || trustedScripts.value || call.descriptor.kind !is ToolKind.Local) return
         val safe = setOf("open_uri", "notify", "view_image", "screenshot", "memory", "load_skill", "launch_app", "find_installed_apps", "screen_operation_shell", "screen_operation_accessibility", "py_meta_tools")
         if (call.descriptor.name in safe) return
         val decision = runCatching { requireService<AgentControl>() }.getOrNull()?.decideApproval(

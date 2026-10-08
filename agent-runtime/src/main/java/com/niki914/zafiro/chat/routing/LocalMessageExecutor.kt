@@ -72,7 +72,7 @@ internal object LocalMessageExecutor {
                         navigationRecovered = true // At most one verified back-navigation, never a loop.
                     }
                     if (instruction.action == LocalTaskPlan.Action.Approval) {
-                        val decision = requireService<AgentControl>().decideApproval(ApprovalRequest.ToolExecution(
+                        val decision = if (LocalIntelligence.allowMessageSending.value) ApprovalDecision.Allow else requireService<AgentControl>().decideApproval(ApprovalRequest.ToolExecution(
                             context.getString(R.string.local_send_message), "WhatsApp\n" + plan.recipient + "\n" + plan.content,
                             context.getString(R.string.local_send_confirmation)))
                         if (decision != ApprovalDecision.Allow) { cancelled = true; throw PlanStopped() }
