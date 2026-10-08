@@ -85,6 +85,8 @@ fun LocalAiSettings(onDismiss: () -> Unit) {
                 }
                 Text(stringResource(R.string.local_ai_allow_messages_scope))
                 Text(stringResource(R.string.local_ai_diagnostics, diagnostics.route, diagnostics.routingMs))
+                Text("GUI-Owl 1.5 2B · Android Brain", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.local_ai_gui_owl_candidate))
                 ModelArtifact.candidates.forEach { artifact ->
                     val download = state.getValue(artifact.id)
                     Text(if (selectedModel == artifact.id) stringResource(R.string.local_ai_selected_model, artifact.name) else artifact.name, style = MaterialTheme.typography.titleSmall)

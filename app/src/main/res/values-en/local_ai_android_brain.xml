@@ -1,0 +1,3 @@
+<resources>
+    <string name="local_ai_gui_owl_candidate">Optional experimental candidate. Not bundled or active. Requires a compatible Qwen3-VL vision runtime and verified model plus vision weights before download can be enabled. Android speed, memory, battery and Hebrew task success have not been measured.</string>
+</resources>
