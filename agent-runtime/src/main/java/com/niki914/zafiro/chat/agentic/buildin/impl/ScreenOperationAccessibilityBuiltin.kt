@@ -58,7 +58,17 @@ class ScreenOperationAccessibilityBuiltin : TextResultBuiltinTool() {
             is ScreenOp.Read -> {
                 val capture = captureAfterOptionalWait(args)
                 capture.fold(
-                    onSuccess = { TextToolResult.success(it.yaml) },
+                    onSuccess = { snapshot ->
+                        val pkg = AccessibilityController.foregroundPackage()
+                        val hints = if (snapshot.nodeCount <= 1 && pkg != null)
+                            com.niki914.zafiro.chat.agentic.accessibility.LocalVisionFallback.inspect(
+                                com.niki914.zafiro.chat.agentic.accessibility.VisionReason.EmptyTree, pkg) else null
+                        val advisory = hints?.takeIf { it.isNotEmpty() }?.joinToString("\n", prefix =
+                            "\n# Optional local visual observations. Unverified, no node tokens or action authority.\n") {
+                            "# ${it.label.replace('\n', ' ').replace('\r', ' ')}: ${it.bounds}"
+                        }.orEmpty()
+                        TextToolResult.success(snapshot.yaml + advisory)
+                    },
                     onFailure = { e ->
                         TextToolResult.failure(
                             ScreenOperationError.SERVICE_UNAVAILABLE.code,

@@ -20,6 +20,9 @@ import com.niki914.zafiro.chat.routing.LocalIntelligence
 fun LocalAiSettings(onDismiss: () -> Unit) {
     val model = rememberLocalAiModel()
     val runtimeStatus by LocalCommandRuntime.status.collectAsState()
+    val brainEnabled by GuiOwlRuntime.enabled.collectAsState()
+    val brainStatus by GuiOwlRuntime.status.collectAsState()
+    val brainMeasurement by GuiOwlRuntime.lastMeasurement.collectAsState()
     val selectedModel by LocalCommandRuntime.selectedModel.collectAsState()
     val discovering by model.discovering.collectAsState()
     val importStatus by model.importStatus.collectAsState()
@@ -87,6 +90,42 @@ fun LocalAiSettings(onDismiss: () -> Unit) {
                 Text(stringResource(R.string.local_ai_diagnostics, diagnostics.route, diagnostics.routingMs))
                 Text("GUI-Owl 1.5 2B · Android Brain", style = MaterialTheme.typography.titleSmall)
                 Text(stringResource(R.string.local_ai_gui_owl_candidate))
+                val brainInstalled = ModelArtifact.androidBrainArtifacts.all { state.getValue(it.id).installed }
+                val brainDownloading = ModelArtifact.androidBrainArtifacts.any { state.getValue(it.id).downloading }
+                Row {
+                    Text(stringResource(R.string.local_ai_android_brain_enable), Modifier.weight(1f))
+                    Switch(brainEnabled, model::setAndroidBrain, enabled = brainInstalled && brainStatus !in setOf("LOADING", "RUNNING", "VERIFYING"))
+                }
+                Text(stringResource(when (brainStatus) {
+                    "OFF" -> R.string.local_ai_not_selected
+                    "VERIFYING", "LOADING", "RUNNING" -> R.string.local_ai_loading
+                    "READY", "SMOKE_TEST_PASSED" -> R.string.local_ai_android_brain_smoke
+                    "IDLE" -> R.string.local_ai_idle
+                    "INTEGRITY_FAILED" -> R.string.local_ai_integrity
+                    "GUI_OWL_LOW_MEMORY" -> R.string.local_ai_low_memory
+                    else -> R.string.local_ai_runtime_failed
+                }))
+                brainMeasurement?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (brainDownloading) LinearProgressIndicator(progress = {
+                    (ModelArtifact.androidBrainArtifacts.sumOf { state.getValue(it.id).completed }.toFloat() /
+                        ModelArtifact.androidBrainArtifacts.sumOf { it.bytes }).coerceIn(0f, 1f)
+                }, modifier = Modifier.fillMaxWidth())
+                ModelArtifact.androidBrainArtifacts.forEach { artifact ->
+                    state.getValue(artifact.id).status?.let { Text(stringResource(it)) }
+                }
+                Row {
+                    TextButton(onClick = { if (brainDownloading) model.pauseAndroidBrain() else model.downloadAndroidBrain() },
+                        enabled = !brainInstalled || brainDownloading) {
+                        Text(stringResource(if (brainDownloading) R.string.local_ai_pause else R.string.local_ai_download))
+                    }
+                    TextButton(onClick = model::testAndroidBrain, enabled = brainInstalled && brainStatus !in setOf("LOADING", "RUNNING", "VERIFYING")) {
+                        Text(stringResource(R.string.local_ai_android_brain_test))
+                    }
+                    TextButton(onClick = { model.pauseAndroidBrain(); ModelArtifact.androidBrainArtifacts.forEach(model::delete) },
+                        enabled = brainStatus !in setOf("LOADING", "RUNNING", "VERIFYING")) {
+                        Text(stringResource(R.string.local_ai_delete))
+                    }
+                }
                 ModelArtifact.candidates.forEach { artifact ->
                     val download = state.getValue(artifact.id)
                     Text(if (selectedModel == artifact.id) stringResource(R.string.local_ai_selected_model, artifact.name) else artifact.name, style = MaterialTheme.typography.titleSmall)

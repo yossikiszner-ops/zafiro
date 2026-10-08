@@ -31,7 +31,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
     private val jobs = mutableMapOf<String, Job>()
     private val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS).followSslRedirects(false).build()
-    private val current = MutableStateFlow(ModelArtifact.candidates.associate { artifact -> artifact.id to
+    private val current = MutableStateFlow(ModelArtifact.downloadable.associate { artifact -> artifact.id to
         ModelDownloadState(part(artifact).length()) })
     val state = current.asStateFlow()
     private val preferences = application.getSharedPreferences("local-ai", 0)
@@ -46,6 +46,12 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
     private val settingsVisible = MutableStateFlow(false)
     val showStartupSettings = settingsVisible.asStateFlow()
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            ModelArtifact.androidBrainArtifacts.forEach { artifact ->
+                val installed = artifact.verify(model(artifact))
+                withContext(Dispatchers.Main) { update(artifact, ModelDownloadState(part(artifact).length(), installed)) }
+            }
+        }
         viewModelScope.launch {
             val found = try { withContext(Dispatchers.IO) {
                 val roots = listOf(directory, application.filesDir) + application.getExternalFilesDirs(null).filterNotNull()
@@ -123,7 +129,44 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     fun setWifiOnly(enabled: Boolean) { wifi.value = enabled; preferences.edit().putBoolean("wifi-only", enabled).apply() }
-    private fun model(a: ModelArtifact) = File(directory, "${a.id}.litertlm")
+    fun downloadAndroidBrain() {
+        if (jobs["android-brain-bundle"]?.isCompleted == false) return
+        jobs["android-brain-bundle"] = viewModelScope.launch {
+            for (artifact in ModelArtifact.androidBrainArtifacts) {
+                if (current.value.getValue(artifact.id).installed) continue
+                download(artifact)
+                jobs[artifact.id]?.join()
+                if (!current.value.getValue(artifact.id).installed) break
+            }
+        }
+    }
+    fun pauseAndroidBrain() {
+        jobs["android-brain-bundle"]?.cancel()
+        ModelArtifact.androidBrainArtifacts.forEach(::pause)
+    }
+    fun setAndroidBrain(enabled: Boolean) {
+        viewModelScope.launch {
+            if (enabled) GuiOwlRuntime.enable() else GuiOwlRuntime.disable()
+        }
+    }
+    fun testAndroidBrain() {
+        if (jobs["android-brain-test"]?.isCompleted == false) return
+        jobs["android-brain-test"] = viewModelScope.launch {
+            try {
+                if (!GuiOwlRuntime.enable()) return@launch
+                val image = com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.captureScreenImage().getOrNull()
+                if (image == null) { GuiOwlRuntime.status.value = "SCREEN_UNAVAILABLE"; return@launch }
+                try {
+                    val targets = GuiOwlRuntime.detect(image)
+                    GuiOwlRuntime.status.value = if (targets.isEmpty()) "OUTPUT_VALIDATION_FAILED" else "SMOKE_TEST_PASSED"
+                } finally { image.recycle() }
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (_: Exception) {
+                if (GuiOwlRuntime.status.value == "READY") GuiOwlRuntime.status.value = "OUTPUT_VALIDATION_FAILED"
+            }
+        }
+    }
+    private fun model(a: ModelArtifact) = File(directory, "${a.id}.${a.extension}")
     private fun part(a: ModelArtifact) = File(directory, "${a.id}.partial")
     private fun update(a: ModelArtifact, value: ModelDownloadState) { current.value = current.value + (a.id to value) }
 
@@ -133,6 +176,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
         val deletion = viewModelScope.launch(start = CoroutineStart.LAZY) {
             previous?.cancelAndJoin()
             LocalCommandRuntime.forget(a)
+            if (a in ModelArtifact.androidBrainArtifacts) GuiOwlRuntime.disable()
             withContext(Dispatchers.IO) { model(a).delete(); part(a).delete() }
             update(a, ModelDownloadState())
         }
@@ -158,6 +202,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
         if (mode == IntelligenceMode.CloudQuality) LocalCommandRuntime.unload()
     }
     fun benchmark(a: ModelArtifact) {
+        if (a !in ModelArtifact.candidates) return
         if (scanning.value || jobs[a.id]?.isCompleted == false || !model(a).isFile) return
         jobs[a.id] = viewModelScope.launch {
             update(a, current.value.getValue(a.id).copy(status = R.string.local_ai_benchmark_running))
@@ -177,6 +222,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
             update(a, ModelDownloadState(part(a).length(), model(a).isFile, true))
             try {
                 withContext(Dispatchers.IO) {
+                    if (a in ModelArtifact.androidBrainArtifacts) GuiOwlRuntime.disable()
                     if (wifi.value) {
                         val connectivity = getApplication<Application>().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
                         val network = connectivity.getNetworkCapabilities(connectivity.activeNetwork)
@@ -224,7 +270,7 @@ class LocalAiViewModel(application: Application) : AndroidViewModel(application)
                 }
                 update(a, ModelDownloadState(a.bytes, true, status = R.string.local_ai_installed))
                 jobs.remove(a.id)
-                benchmark(a)
+                if (a in ModelArtifact.candidates) benchmark(a)
             } catch (cancel: CancellationException) {
                 update(a, ModelDownloadState(part(a).length(), model(a).isFile, status = R.string.local_ai_paused))
                 throw cancel

@@ -35,6 +35,8 @@ class App : Application() {
         super.onTrimMemory(level)
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)
             com.niki914.zafiro.app.localai.LocalCommandRuntime.unload()
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)
+            com.niki914.zafiro.app.localai.GuiOwlRuntime.unload()
     }
 
     override fun onCreate() {
@@ -46,6 +48,7 @@ class App : Application() {
         if (!isMainProcess()) return
         ContextProvider.provide(applicationContext)
         com.niki914.zafiro.app.localai.LocalCommandRuntime.install(applicationContext)
+        com.niki914.zafiro.app.localai.GuiOwlRuntime.install(applicationContext)
         com.niki914.zafiro.chat.routing.LocalIntelligence.mode.value = runCatching {
             com.niki914.zafiro.chat.routing.IntelligenceMode.valueOf(getSharedPreferences("local-ai", MODE_PRIVATE).getString("mode", "Balanced") ?: "Balanced")
         }.getOrDefault(com.niki914.zafiro.chat.routing.IntelligenceMode.Balanced)
