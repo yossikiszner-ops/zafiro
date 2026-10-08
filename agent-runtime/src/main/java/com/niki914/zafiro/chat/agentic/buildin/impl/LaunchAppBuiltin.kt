@@ -2,6 +2,7 @@ package com.niki914.zafiro.chat.agentic.buildin.impl
 
 import android.content.Context
 import android.content.Intent
+import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
@@ -9,6 +10,8 @@ import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
 import com.niki914.zafiro.chat.agentic.device.AppInfo
 import com.niki914.zafiro.chat.agentic.device.AppInfoProvider
 import com.niki914.zafiro.chat.agentic.device.AppMatchResult
+import com.niki914.zafiro.chat.agentic.shell.TerminalCommandOutcome
+import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -101,10 +104,13 @@ class LaunchAppBuiltin : BuiltinTool() {
             data["is_system_app"] = JsonPrimitive(it.isSystemApp)
         }
         return when (event) {
-            LaunchEvent.Launched -> BuiltinToolResult.success(
-                message = "App launched.",
-                data = JsonObject(data),
-            )
+            LaunchEvent.Launched -> {
+                com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController.observedPackage.value = packageName
+                BuiltinToolResult.success(
+                    message = "App launched.",
+                    data = JsonObject(data),
+                )
+            }
 
             is LaunchEvent.Failed -> BuiltinToolResult.failure(
                 code = "APP_LAUNCH_FAILED",
@@ -115,9 +121,70 @@ class LaunchAppBuiltin : BuiltinTool() {
         }
     }
 
-    private fun Context.startApp(packageName: String): LaunchEvent {
+    private suspend fun Context.startApp(packageName: String): LaunchEvent {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             ?: return LaunchEvent.Failed("No launcher activity found for package '$packageName'.")
+
+        // Normal foreground app launch should not wait for root and Shizuku shell startups.
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            startActivity(launchIntent)
+            val controller = com.niki914.zafiro.chat.agentic.accessibility.AccessibilityController
+            if (controller.foregroundPackage() == null) return LaunchEvent.Launched
+            val visible = kotlinx.coroutines.withTimeoutOrNull(900) {
+                while (controller.foregroundPackage() != packageName) kotlinx.coroutines.delay(50)
+                true
+            } == true
+            if (visible) return LaunchEvent.Launched
+            // Android may silently deny background activity starts. Retain existing authority fallback.
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (_: Exception) { /* Existing privileged routes remain available when Android denies startActivity. */ }
+
+        val componentName = launchIntent.component?.flattenToString()
+        val command = if (componentName != null) {
+            "am start -n '$componentName'"
+        } else {
+            "am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p '$packageName'"
+        }
+
+        for (identity in listOf("root", "shizuku")) {
+            val outcome = try {
+                TerminalSessionPool.openAndExecute(
+                    identity = identity,
+                    cwd = null,
+                    command = command,
+                    timeoutMs = LAUNCH_TIMEOUT_MS,
+                )
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Logger.w(LOG_TAG, "am start exception identity=$identity: ${e.message}")
+                null
+            }
+            val session = (outcome as? TerminalCommandOutcome.Success)?.session
+                ?: (outcome as? TerminalCommandOutcome.Timeout)?.session
+            if (session != null) {
+                runCatching { TerminalSessionPool.close(session) }
+            }
+            if (outcome is TerminalCommandOutcome.Success && outcome.result.exitCode == 0) {
+                val stdout = outcome.result.stdout.toByteArray().decodeToString()
+                val stderr = outcome.result.stderr.toByteArray().decodeToString()
+                val output = "$stdout\n$stderr"
+                val hasError = output.contains("Error:", ignoreCase = true) ||
+                    output.contains("Permission Denial", ignoreCase = true) ||
+                    output.contains("SecurityException", ignoreCase = true)
+                if (!hasError) {
+                    Logger.d(LOG_TAG, "startApp succeeded via identity=$identity")
+                    return LaunchEvent.Launched
+                }
+                Logger.w(LOG_TAG, "am start identity=$identity reported error: $output")
+            } else {
+                Logger.w(
+                    LOG_TAG,
+                    "am start failed identity=$identity outcome=${outcome?.let { it::class.simpleName }}"
+                )
+            }
+        }
+
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
             startActivity(launchIntent)
@@ -172,6 +239,9 @@ class LaunchAppBuiltin : BuiltinTool() {
     }
 
     companion object {
+        private const val LOG_TAG = "niki914_zafiro_LaunchAppBuiltin"
+        private const val LAUNCH_TIMEOUT_MS = 10_000L
+
         private const val LAUNCH_APP_SCHEMA = """
             {
               "type": "object",

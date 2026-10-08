@@ -7,6 +7,11 @@ import org.junit.Test
 
 class RetryableErrorClassifierTest {
 
+    @Test fun `quota refusal takes priority over 429`() {
+        assertEquals(LlmErrorCode.Quota, classify(LLMErrorCode.RateLimit, "429 RESOURCE_EXHAUSTED Quota exceeded, limit: 0"))
+        assertEquals(LlmErrorCode.Quota, classify(LLMErrorCode.Transport, "429 Quota exceeded"))
+    }
+
     private fun classify(
         code: LLMErrorCode,
         message: String,

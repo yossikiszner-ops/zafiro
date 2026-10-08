@@ -20,6 +20,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry
 import com.niki914.zafiro.settings.model.RuntimeAgentMemoryMode as AgentMemoryMode
 import com.niki914.zafiro.settings.model.RuntimeAgentProfile as AgentProfile
 import com.niki914.zafiro.settings.model.RuntimeMcpServer as McpServer
@@ -46,11 +47,35 @@ class XRepoDomainSettingsTest {
 
         XRepo.setOnboardingCompleted(true)
         XRepo.setLoadLastConversationOnStartup(true)
-        XRepo.setLanguageTag("zh-CN")
+        XRepo.setLanguageTag("he")
 
         assertTrue(XRepo.loadLastConversationOnStartup())
-        assertEquals("zh-CN", XRepo.languageTag())
+        assertEquals("he", XRepo.languageTag())
         assertTrue(XRepo.onboardingCompleted())
+    }
+
+    @Test
+    fun setConversationPinned_addRemoveAndRepinKeepsLatestTimestamp() = runTest {
+        val store = FakeDomainSettingsStore()
+        XRepo.installStoreForTest(store)
+        XRepo.init(context)
+
+        XRepo.setConversationPinned("c1", pinned = true, now = 100L)
+        XRepo.setConversationPinned("c2", pinned = true, now = 200L)
+        assertEquals(
+            listOf(PinnedConversation("c1", 100L), PinnedConversation("c2", 200L)),
+            XRepo.pinnedConversations(),
+        )
+
+        // 重复置顶同一会话：更新时刻，不产生重复项
+        XRepo.setConversationPinned("c1", pinned = true, now = 300L)
+        assertEquals(
+            listOf(PinnedConversation("c2", 200L), PinnedConversation("c1", 300L)),
+            XRepo.pinnedConversations(),
+        )
+
+        XRepo.setConversationPinned("c1", pinned = false)
+        assertEquals(listOf(PinnedConversation("c2", 200L)), XRepo.pinnedConversations())
     }
 
     @Test
@@ -110,10 +135,10 @@ class XRepoDomainSettingsTest {
         XRepo.installStoreForTest(store)
         XRepo.init(context)
 
-        XRepo.setLanguageTag("  zh-CN  ")
+        XRepo.setLanguageTag("  he  ")
         XRepo.setLastOpenedConversationId("  conv-1  ")
 
-        assertEquals("zh-CN", XRepo.languageTag())
+        assertEquals("he", XRepo.languageTag())
         assertEquals("conv-1", XRepo.lastOpenedConversationId())
     }
 
@@ -250,7 +275,7 @@ class XRepoDomainSettingsTest {
 
     @Test
     fun builtinGroupsReferenceRegisteredToolsWithoutOverlap() {
-        val registryNames = com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRegistry.default()
+        val registryNames = BuiltinToolRegistry.default()
             .all().map { it.name }.toSet()
         val groupedNames = BuiltinToolGroups.all.flatMap { it.members }
 

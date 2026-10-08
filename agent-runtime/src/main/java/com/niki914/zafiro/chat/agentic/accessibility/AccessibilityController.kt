@@ -6,6 +6,7 @@ import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
 import android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
+import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK
@@ -33,9 +34,12 @@ import com.niki914.zafiro.chat.agentic.shell.TerminalOpenOutcome
 import com.niki914.zafiro.chat.agentic.shell.TerminalSessionPool
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.resume
 import android.graphics.Rect as AndroidRect
 
 /**
@@ -48,6 +52,7 @@ import android.graphics.Rect as AndroidRect
  */
 interface IAccessibility {
     val windowRoot: AccessibilityNodeInfo?
+    val keyboardRoots: List<AccessibilityNodeInfo> get() = emptyList()
     fun performAction(node: AccessibilityNodeInfo, action: Int, text: String?): Boolean
     fun dispatchGesture(
         startX: Float,
@@ -56,6 +61,12 @@ interface IAccessibility {
         endY: Float,
         duration: Long
     ): Boolean
+
+    /**
+     * 抓一张整屏图（官方无障碍截屏 API，API 30+）；设备不支持或被系统拒绝（安全窗口等）时回调 null。
+     * 回调线程由实现决定。
+     */
+    fun captureScreenImage(listener: (Bitmap?) -> Unit)
 }
 
 enum class NodeAction { CLICK, LONG_CLICK, SET_TEXT, SCROLL_FORWARD, SCROLL_BACKWARD }
@@ -66,6 +77,7 @@ object AccessibilityController {
     // 消费的英文契约文本，非 UI 本地化文案），与宿主渲染卡片的边界 hardcode 用途不同，
     // 保持英文原样，不资源化。
 
+    @Volatile var physicalKeyboardTyping: Boolean = false
     private var serviceInstance: IAccessibility? = null
     private val nodeCache = ConcurrentHashMap<Int, AccessibilityNodeInfo>()
 
@@ -83,6 +95,10 @@ object AccessibilityController {
     @Volatile
     var pointerOverlay: IPointerOverlay? = null
 
+    /** Reads actual accessibility state; does not request permissions or mutate expected identity. */
+    fun foregroundPackage(): String? = runCatching { serviceInstance?.windowRoot?.packageName?.toString() }.getOrNull()
+
+    val observedPackage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private var pointerShown = false
     private var cachedScreenWidth: Int = 0
     private var cachedScreenHeight: Int = 0
@@ -96,6 +112,8 @@ object AccessibilityController {
 
     /** Reset pointer state and hide overlay at end of an agent turn. */
     fun onTurnEnd() {
+        ScreenBrain.activeTurn = false
+        observedPackage.value = null
         pointerShown = false
         pointerOverlay?.hide()
     }
@@ -141,16 +159,19 @@ object AccessibilityController {
 
     fun setService(service: IAccessibility) {
         serviceInstance = service
+        ScreenBrain.connect { service.windowRoot }
     }
 
     fun clearService() {
         serviceInstance = null
+        ScreenBrain.disconnect()
         nodeCache.clear()
     }
 
     /** Called from [ZafiroAccessibilityService.onAccessibilityEvent] on UI-significant events. */
     fun recordUiEvent() {
         lastUiEventTime = SystemClock.elapsedRealtime()
+        ScreenBrain.onUiEvent()
     }
 
     fun clearPointerOverlay() {
@@ -234,18 +255,78 @@ object AccessibilityController {
             )
         }
 
-        // Give the system a moment to bind the service
-        delay(300L)
-        repeat(9) {
-            if (serviceInstance != null) return Result.success(Unit)
-            delay(300L)
-        }
-
-        return if (serviceInstance != null) {
+        return if (awaitServiceConnected()) {
             Result.success(Unit)
         } else {
             Result.failure(RuntimeException("AccessibilityService did not start within 3s"))
         }
+    }
+
+    /**
+     * 确保无障碍服务可用于截屏：只要 [Permission.ACCESSIBILITY]，不要 OVERLAY、不弹屏幕控制同意门。
+     * 缺权限时跑默认链（ROOT_SHELL → SHIZUKU → JUMP_SETTINGS）：后台调用时跳设置页那一环
+     * 会自行跳过（JumpSettingsHandler 只在有前台时跳），前台则是用户就在旁边的一次跳转。
+     */
+    suspend fun ensureAccessibility(): Result<Unit> {
+        if (serviceInstance != null) return Result.success(Unit)
+
+        val failures = ArrayList<String>(1)
+        if (!ensureOne(Permission.ACCESSIBILITY, failures)) {
+            return Result.failure(
+                RuntimeException(
+                    "The Zafiro accessibility service is not available (${failures.joinToString("; ")}). " +
+                            "Tell the user to enable 'Zafiro' in Settings > Accessibility, then retry."
+                )
+            )
+        }
+        return if (awaitServiceConnected()) {
+            Result.success(Unit)
+        } else {
+            Result.failure(RuntimeException("AccessibilityService did not start within 3s"))
+        }
+    }
+
+    /** 抓图整体超时：系统回调不来的话不把工具调用挂死。 */
+    private const val CAPTURE_TIMEOUT_MS = 5_000L
+
+    /**
+     * 用无障碍服务抓一张整屏图（官方 API，不是 shell 截屏）。
+     * 前置：调用方先跑 [ensureAccessibility]。安全窗口 / 受保护内容会被系统拒绝。
+     *
+     * 拿到的是 HARDWARE 位图（像素不可直接读），调用方自行 `copy` 成软件位图并 `recycle`。
+     */
+    suspend fun captureScreenImage(): Result<Bitmap> {
+        val service = serviceInstance
+            ?: return Result.failure(RuntimeException("Accessibility service is not connected."))
+
+        val bitmap = try {
+            withTimeoutOrNull(CAPTURE_TIMEOUT_MS) {
+                suspendCancellableCoroutine<Bitmap?> { cont ->
+                    service.captureScreenImage { bitmap -> cont.resume(bitmap) }
+                }
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            null
+        }
+
+        return if (bitmap != null) {
+            Result.success(bitmap)
+        } else {
+            Result.failure(
+                RuntimeException("Screen capture failed or timed out; secure or protected content cannot be captured.")
+            )
+        }
+    }
+
+    /** 等系统把刚授权的无障碍服务绑定起来：300ms 起步，最多重试 9 次。 */
+    private suspend fun awaitServiceConnected(): Boolean {
+        delay(300L)
+        repeat(9) {
+            if (serviceInstance != null) return true
+            delay(300L)
+        }
+        return serviceInstance != null
     }
 
     /**
@@ -424,6 +505,7 @@ object AccessibilityController {
         cachedScreenWidth = dm.widthPixels
         cachedScreenHeight = dm.heightPixels
         val appPkg = root.packageName?.toString() ?: "unknown"
+        observedPackage.value = appPkg.takeUnless { it == "unknown" }
 
         rebuildCache(root)
 
@@ -569,10 +651,42 @@ object AccessibilityController {
      * against [currentVersion], and performs the action via accessibility
      * with automatic shell fallback for non-SET_TEXT actions.
      */
+    /** Fresh semantic resolution feeds the existing token/cursor/permission executor. */
+    suspend fun executeSemanticTarget(target: SemanticTarget, action: NodeAction, text: String? = null,
+        expectedPackage: String? = null, preconditions: List<SemanticTarget> = emptyList()): BuiltinToolResult {
+        try { refreshNodeCache() }
+        catch (cancel: CancellationException) { throw cancel }
+        catch (_: Exception) { return BuiltinToolResult.failure("SERVICE_UNAVAILABLE", "Screen unavailable") }
+        fun matches(node: AccessibilityNodeInfo, expected: SemanticTarget): Boolean =
+            node.isVisibleToUser && node.isEnabled && !node.isPassword &&
+                (expectedPackage == null || node.packageName?.toString() == expectedPackage) &&
+                (expected.editable == null || node.isEditable == expected.editable) &&
+                (expected.clickable == null || node.isClickable == expected.clickable) &&
+                (expected.resourceId == null || node.viewIdResourceName == expected.resourceId) &&
+                (expected.exactText == null || node.text?.toString().orEmpty() == expected.exactText) &&
+                (expected.labels.isEmpty() || expected.labels.any {
+                    it.equals(node.text?.toString()?.trim(), true) || it.equals(node.contentDescription?.toString()?.trim(), true)
+                })
+        val entry = nodeCache.entries.filter { matches(it.value, target) }.singleOrNull()
+            ?: return BuiltinToolResult.failure("TARGET_AMBIGUOUS_OR_MISSING", "No unique semantic target")
+        val required = preconditions.map { expected ->
+            val node = nodeCache.values.filter { matches(it, expected) }.singleOrNull()
+                ?: return BuiltinToolResult.failure("PRECONDITION_CHANGED", "Expected conversation or text changed")
+            node to expected
+        }
+        return executeNodeAction(currentVersion + "_" + entry.key, action, text) {
+            // Revalidate after cursor movement, immediately before Android authority executes.
+            (expectedPackage == null || foregroundPackage() == expectedPackage) &&
+                entry.value.refresh() && matches(entry.value, target) &&
+                required.all { (node, expected) -> node.refresh() && matches(node, expected) }
+        }
+    }
+
     suspend fun executeNodeAction(
         token: String,
         action: NodeAction,
         text: String?,
+        validate: (() -> Boolean)? = null,
     ): BuiltinToolResult {
         ensureService().getOrElse { e ->
             return BuiltinToolResult.failure(
@@ -608,9 +722,10 @@ object AccessibilityController {
         // Fly pointer to node centre before acting
         val nodeRect = AndroidRect()
         node.getBoundsInScreen(nodeRect)
-        pointerOverlay?.animateTo(nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat())
-
-        return executeAccessibilityAction(node, st.index, action, text)
+        return PointerActionCoordinator.execute(pointerOverlay, nodeRect.centerX().toFloat(), nodeRect.centerY().toFloat()) {
+            if (validate?.invoke() == false) BuiltinToolResult.failure("PRECONDITION_CHANGED", "Target or conversation changed")
+            else executeAccessibilityAction(node, st.index, action, text)
+        }
     }
 
     private suspend fun executeShellAction(
@@ -713,6 +828,9 @@ object AccessibilityController {
         action: NodeAction,
         text: String?,
     ): BuiltinToolResult {
+        if (action == NodeAction.SET_TEXT && physicalKeyboardTyping && text != null) {
+            PhysicalKeyboardTyper.type(serviceInstance!!, node, text, pointerOverlay)?.let { return it }
+        }
         val actionInt = when (action) {
             NodeAction.CLICK -> ACTION_CLICK
             NodeAction.LONG_CLICK -> ACTION_LONG_CLICK
@@ -758,13 +876,14 @@ object AccessibilityController {
             )
         }
 
-        // Fly pointer along the swipe path before executing
-        pointerOverlay?.showSwipe(startX, startY, endX, endY, duration)
+        pointerOverlay?.animateTo(startX, startY)
 
         val success =
             serviceInstance?.dispatchGesture(startX, startY, endX, endY, duration) ?: false
         return if (success) {
-            BuiltinToolResult.success("gesture performed via accessibility")
+            pointerOverlay?.showSwipe(startX, startY, endX, endY, duration)
+            pointerOverlay?.actionAccepted()
+            BuiltinToolResult.success("gesture accepted by accessibility; verify its effect from the resulting screen tree")
         } else {
             BuiltinToolResult.failure("GESTURE_FAILED", "gesture failed via accessibility")
         }
@@ -779,6 +898,7 @@ object AccessibilityController {
                 "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
             )
         }
+        pointerOverlay?.animateTo(x.toFloat(), y.toFloat())
         val result = runShellCommand("input tap $x $y")
         if (!result.shellAvailable) {
             return BuiltinToolResult.failure(
@@ -791,6 +911,7 @@ object AccessibilityController {
                 "Shell tap at ($x, $y) failed: ${result.stderr}",
             )
         }
+        pointerOverlay?.actionAccepted()
         return BuiltinToolResult.success("shell tap at ($x, $y)")
     }
 
@@ -803,6 +924,7 @@ object AccessibilityController {
                 "SERVICE_UNAVAILABLE", e.message ?: "Service unavailable"
             )
         }
+        pointerOverlay?.animateTo(x.toFloat(), y.toFloat())
         val result = runShellCommand("input swipe $x $y $x $y 1500")
         if (!result.shellAvailable) {
             return BuiltinToolResult.failure(
@@ -815,6 +937,7 @@ object AccessibilityController {
                 "Shell long click at ($x, $y) failed: ${result.stderr}",
             )
         }
+        pointerOverlay?.actionAccepted()
         return BuiltinToolResult.success("shell long click at ($x, $y)")
     }
 

@@ -101,8 +101,13 @@ internal class RealAgentLoop : AgentLoop {
         // 回合累积历史：初始 = 请求历史（含当前输入），每轮产出追加。
         // 下一轮 buildRequest 用它（工具结果已回喂）。
         val history = baseHistory.toMutableList()
+        var modelRounds = 0
 
         while (true) {
+            if (modelRounds++ >= request.options.maxModelRounds.coerceAtLeast(1)) {
+                return failTurn(onEvent, AssistantMessage(emptyList()),
+                    LLMError(LLMErrorCode.ToolExecutionFailed, "Action step budget exhausted; stopped without repeating the workflow"))
+            }
             // 段执行（含回合层段首重试）；Finished = 回合终态已内部处理
             val assistant = when (val outcome = runSegment(request, onEvent, history)) {
                 is SegmentOutcome.Finished -> return outcome.result
@@ -233,7 +238,8 @@ internal class RealAgentLoop : AgentLoop {
                         return SegmentOutcome.Finished(TurnResult.Failed(send.error))
                     }
                     // 传输层耗尽 / 不可重试 → 回合层判断（嵌套 G6）
-                    if (send.error.code.isRetryable && turnAttempt < turnMax) {
+                    if (send.error.code.isRetryable &&
+                        (send.error.retryDelayMs ?: 0) <= request.retryPolicy.maxServerWaitMs && turnAttempt < turnMax) {
                         turnAttempt++
                         val delay = turnPolicy!!.delayMs(turnAttempt)
                         onEvent(
@@ -356,6 +362,7 @@ internal class RealAgentLoop : AgentLoop {
             if (failure.code.isRetryable && attempt < max) {
                 attempt++
                 val delay = failure.retryDelayMs ?: policy.delayMs(attempt)
+                if (delay > policy.maxServerWaitMs) return SendResult.Failed(failure)
                 val reason = failure.statusCode?.let { "HTTP $it" } ?: "stream failed"
                 onEvent(TurnEvent.RetryScheduled(attempt, max, delay, reason))
                 delay(delay)

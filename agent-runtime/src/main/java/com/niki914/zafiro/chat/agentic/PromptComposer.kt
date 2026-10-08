@@ -39,6 +39,7 @@ class PromptComposer {
                 .takeIf { hasBuiltinTool(input, "load_skill") },
             TASK_COMPLETION_GUIDANCE.takeIf { hasAnyTool(input) },
             TOOL_USE_ENFORCEMENT_GUIDANCE.takeIf { hasAnyTool(input) },
+            FAST_ANDROID_ACTION_GUIDANCE.takeIf { hasBuiltinTool(input, "launch_app") },
             EXECUTION_RULES_GUIDANCE.takeIf { hasAnyTool(input) },
             MEMORY_GUIDANCE.takeIf { hasBuiltinTool(input, "memory") },
             SKILLS_GUIDANCE.takeIf { hasBuiltinTool(input, "load_skill") },
@@ -182,6 +183,16 @@ class PromptComposer {
                     "Every response should either (a) contain tool calls that make progress, or " +
                     "(b) deliver a final result to the user."
 
+        internal const val FAST_ANDROID_ACTION_GUIDANCE =
+            "# Efficient Android actions\n" +
+                    "For a clear installed app name, call launch_app directly; use find_installed_apps only when ambiguous. " +
+                    "Prefer native screen tools over Python or shell processes for supported operations. " +
+                    "Every screen write already returns an updated tree: use that result for the next decision; do not add redundant reads. " +
+                    "Use one set_text call for the exact full message; the user\'s keyboard preference is handled by Android control. " +
+                    "Use screenshots only when the semantic tree cannot locate the target. " +
+                    "Stop after two failed attempts at the same target; ask for the missing information rather than cycling. " +
+                    "For messaging, verify the recipient and exact message before final Send, obtain user confirmation, and do not claim delivery from an injected tap."
+
         internal const val EXECUTION_RULES_GUIDANCE =
             "# Execution rules\n" +
                     "Tool actions may be blocked by Zafiro's app-level execution rules, which are " +
@@ -203,7 +214,8 @@ class PromptComposer {
                     "'submitted PR Y', 'Phase N done', file counts, or any artifact that will be stale " +
                     "in 7 days. If a fact will be stale in a week, it does not belong in memory. " +
                     "If you've discovered a new way to do something, solved a problem that could be " +
-                    "necessary later, save it as a skill with the skill tool.\n" +
+                    "necessary later, save it as a skill with python — write a SKILL.md under " +
+                    "the skills directory (see the skill-creator skill).\n" +
                     "Write memories as declarative facts, not instructions to yourself. " +
                     "'User prefers concise responses' ✓ — 'Always respond concisely' ✗. " +
                     "'Project uses pytest with xdist' ✓ — 'Run tests with pytest -n 4' ✗. " +

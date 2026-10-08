@@ -141,7 +141,40 @@ internal class RealOkia(
 
             val request = buildLoopRequest(text, options)
             val job = turnScope.async {
-                dependencies.agentLoop.run(request) { event -> handleEvent(event, onEvent) }
+                val local = options?.localAction
+                if (local == null) dependencies.agentLoop.run(request) { event -> handleEvent(event, onEvent) }
+                else {
+                    handleEvent(TurnEvent.TurnStarted(text), onEvent)
+                    var stopped: LocalTurnStopped? = null
+                    val message = try { local.run { event -> handleEvent(event, onEvent) } }
+                    catch (outcome: LocalTurnStopped) { stopped = outcome; outcome.response }
+                    request.onCommit(listOf(Message.Assistant(message)))
+                    message.content.forEachIndexed { index, block ->
+                        if (block is ContentBlock.Text) {
+                            handleEvent(TurnEvent.TextStarted(index, message), onEvent)
+                            handleEvent(TurnEvent.TextDelta(index, block.text, message), onEvent)
+                            handleEvent(TurnEvent.TextEnded(index, block.text, message), onEvent)
+                        }
+                    }
+                    val ending = stopped
+                    when {
+                        ending == null -> {
+                            handleEvent(TurnEvent.TurnCompleted(message), onEvent)
+                            TurnResult.Completed(com.niki914.okia.loop.CompletionReason.Stop)
+                        }
+                        ending.cancelled -> {
+                            handleEvent(TurnEvent.TurnAborted(message, StopCause.UserStop), onEvent)
+                            TurnResult.Aborted(StopCause.UserStop)
+                        }
+                        else -> {
+                            val readable = message.content.filterIsInstance<ContentBlock.Text>().joinToString("\n") { it.text }
+                            val error = com.niki914.okia.error.LLMError(
+                                com.niki914.okia.error.LLMErrorCode.ToolExecutionFailed, readable)
+                            handleEvent(TurnEvent.TurnFailed(message, error), onEvent)
+                            TurnResult.Failed(error)
+                        }
+                    }
+                }
             }
             activeTurn = ActiveTurn(job = job, startEntryId = turnStartEntry.id)
             turnJob = job

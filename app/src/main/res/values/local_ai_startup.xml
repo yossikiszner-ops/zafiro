@@ -1,0 +1,23 @@
+<resources>
+    <string name="local_ai_startup_title">Local AI setup</string>
+    <string name="local_ai_startup_found">Compatible local models were found. Choose one and run the on-device check before enabling it.</string>
+    <string name="local_ai_startup_missing">No verified compatible model was found. Download a model or import an existing file from your phone.</string>
+    <string name="local_ai_choose_model">Choose model</string>
+    <string name="local_ai_install_model">Install or import</string>
+    <string name="local_ai_later">Later</string>
+    <string name="local_ai_discovery_scope">Checks Zafiro storage and its external files. Use Import for models in Downloads or another folder. Other apps’ private models cannot be read. Only compatible, checksum-verified LiteRT models are enabled.</string>
+    <string name="local_ai_import">Import existing model</string>
+    <string name="local_ai_importing">Copying and verifying model…</string>
+    <string name="local_ai_imported">Model imported and verified. Select and test to enable it.</string>
+    <string name="local_ai_import_unsupported">Import failed: this file does not match a supported model or could not be read. GGUF files require a different runtime.</string>
+    <string name="local_ai_not_selected">No validated model selected</string>
+    <string name="local_ai_loading">Loading local model…</string>
+    <string name="local_ai_ready">Local model loaded and passed the command check</string>
+    <string name="local_ai_idle">Verified model selected; loads again when needed</string>
+    <string name="local_ai_low_memory">Not enough available RAM to safely load this model. Close other apps or choose a smaller model.</string>
+    <string name="local_ai_accuracy_failed">Model runs but did not pass the command check; it is not enabled for Android actions.</string>
+    <string name="local_ai_runtime_failed">Local model failed to load or run on this device. Reinstall it or try the smaller model.</string>
+    <string name="local_ai_selected_model">Selected: %1$s</string>
+    <string name="local_ai_select_and_test">Select and test on this device</string>
+    <string name="local_ai_discovery_failed">Could not check local storage. You can still import or download a model.</string>
+</resources>

@@ -34,6 +34,11 @@ class DefaultChainTest {
     }
 
     @Test
+    fun `microphone requires user consent without shell grants`() {
+        assertEquals(listOf(Channel.SYSTEM_DIALOG, Channel.JUMP_SETTINGS), PermissionManagerImpl.defaultChain(Permission.MICROPHONE))
+    }
+
+    @Test
     fun `capability permissions default to own channel`() {
         assertEquals(listOf(Channel.ROOT_SHELL), PermissionManagerImpl.defaultChain(Permission.ROOT))
         assertEquals(listOf(Channel.SHIZUKU), PermissionManagerImpl.defaultChain(Permission.SHIZUKU))

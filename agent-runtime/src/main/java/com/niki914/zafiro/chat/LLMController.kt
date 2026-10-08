@@ -62,6 +62,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.File
 import com.niki914.zafiro.settings.model.RuntimeLlmConfig as LlmConfig
+import android.net.Uri
+import com.niki914.zafiro.chat.agentic.image.ImageCodec
+import com.niki914.zafiro.chat.agentic.image.IngestResult
 
 /**
  * Zafiro 的 LLM 回合执行入口。OKIA 接入 T1 重写：
@@ -100,13 +103,13 @@ object LLMController {
         null
     }
 
-    private var imageCodec: com.niki914.zafiro.chat.agentic.image.ImageCodec? = null
+    private var imageCodec: ImageCodec? = null
 
-    private suspend fun ensureImageCodec(): com.niki914.zafiro.chat.agentic.image.ImageCodec? {
+    private suspend fun ensureImageCodec(): ImageCodec? {
         imageCodec?.let { return it }
         // ponytail: 同 sandboxPaths，单测无 provide 时超时兑底
         return withTimeoutOrNull(2_000) { ContextProvider.await().applicationContext }?.let {
-            com.niki914.zafiro.chat.agentic.image.ImageCodec(it).also { codec -> imageCodec = codec }
+            ImageCodec(it).also { codec -> imageCodec = codec }
         }
     }
 
@@ -135,8 +138,8 @@ object LLMController {
         val codec = ensureImageCodec() ?: return null
         return ImageSaver { base64 ->
             when (val result = codec.ingestBase64(base64)) {
-                is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> result.image.path
-                is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
+                is IngestResult.Ok -> result.image.path
+                is IngestResult.Err -> null
             }
         }
     }
@@ -144,10 +147,10 @@ object LLMController {
     /** 相册 URI → ingest 落盘 → path。失败返回 null（UI 静默丢弃）。 */
     suspend fun ingestUserImage(uriString: String): IngestedImage? {
         val codec = ensureImageCodec() ?: return null
-        val result = codec.ingestUri(android.net.Uri.parse(uriString))
+        val result = codec.ingestUri(Uri.parse(uriString))
         return when (result) {
-            is com.niki914.zafiro.chat.agentic.image.IngestResult.Ok -> IngestedImage(result.image.path)
-            is com.niki914.zafiro.chat.agentic.image.IngestResult.Err -> null
+            is IngestResult.Ok -> IngestedImage(result.image.path)
+            is IngestResult.Err -> null
         }
     }
 
@@ -254,7 +257,7 @@ object LLMController {
                     "mcpServers=${resolvedTools.mcpServers.size}"
         )
         val configWithoutRuntimePrompt = ResolvedLlmConfig(
-            endpoint = llmConfig.endpoint,
+            endpoint = llmConfig.endpoint.ifBlank { protocolDefaultEndpointFallback(protocol) },
             apiKey = llmConfig.apiKey,
             model = llmConfig.model,
             baseSystemPrompt = llmConfig.prompt,
@@ -271,6 +274,10 @@ object LLMController {
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
         val previousSession = runtimeState?.okia
         val activeSession = obtainSession(protocol, configWithoutRuntimePrompt)
+        com.niki914.zafiro.chat.routing.NetworkPolicy.configure(
+            listOf(configWithoutRuntimePrompt.endpoint) + resolvedTools.mcpServers.filter { it.enabled }.filterIsInstance<McpServerDefinition.Http>().map { it.url }
+        )
+        com.niki914.zafiro.chat.routing.RoutingRuntime.updateProxy(configWithoutRuntimePrompt.proxy)
         activeSession.update {
             endpoint = configWithoutRuntimePrompt.endpoint
             apiKey = configWithoutRuntimePrompt.apiKey
@@ -278,7 +285,7 @@ object LLMController {
             // 热更新超时/重试策略：实例复用时也要跟随设置变化，否则改设置要冷启才生效
             idleTimeoutSeconds = configWithoutRuntimePrompt.idleTimeoutSeconds
                 ?: NO_IDLE_TIMEOUT_SECONDS
-            retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts)
+            retryPolicy = RetryPolicy(maxAttempts = configWithoutRuntimePrompt.retryMaxAttempts, maxServerWaitMs = 10_000)
             // 最大输出长度热更新：与超时/重试同层（实例复用时跟随设置变化）
             maxTokens = configWithoutRuntimePrompt.maxTokens
             // 思考强度热更新：与超时/重试同层（实例复用时跟随设置变化）
@@ -338,9 +345,27 @@ object LLMController {
      * 树 id == Room 会话 id：HomeChatState 拿它创建 Room 会话，
      * 之后 open(restore) 恢复时树 id 从快照 id 取（对齐）。
      */
-    suspend fun ensureSession(): String {
+    private fun knownLocalPlan(input: String) =
+        com.niki914.zafiro.chat.routing.DirectCommand.parse(input) != null ||
+            com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(input) != null
+
+    /** Offline commands share the same conversation tree without preparing Skills, MCP or a provider. */
+    private suspend fun refreshForLocal(): RuntimeState {
+        val settings = RuntimeEnvironment.awaitSettingsGateway().listBuiltinToolSettings()
+        val tools = toolManager.resolve(emptyList(), emptyList(), settings)
+        val config = runtimeState?.snapshot?.config ?: ResolvedLlmConfig(
+            endpoint = "https://local.invalid", apiKey = "", model = "local-action",
+            baseSystemPrompt = "", finalSystemPrompt = "", maxTokens = 1024)
+        val protocol = sessionProtocol ?: LlmProtocol.Default
+        val session = obtainSession(protocol, config)
+        return RuntimeState(LlmRuntimeSnapshot(config, tools,
+            com.niki914.zafiro.chat.agentic.PromptComposeResult("")), session, protocol, localOnly = true)
+            .also { runtimeState = it }
+    }
+
+    suspend fun ensureSession(firstUserInput: String? = null): String {
         if (okia == null) {
-            refresh()
+            if (firstUserInput != null && knownLocalPlan(firstUserInput)) refreshForLocal() else refresh()
         }
         return okia?.conversation?.value?.id
             ?: error("session not available")
@@ -391,13 +416,21 @@ object LLMController {
     ): Flow<LlmStreamEvent> = channelFlow {
         try {
             val state = try {
-                refresh()
+                withTimeoutOrNull(20_000) {
+                    val local = if (images.isEmpty() && files.isEmpty() && knownLocalPlan(query)) refreshForLocal() else null
+                    val tools = local?.snapshot?.tools?.builtinTools.orEmpty()
+                    val enabled = local != null && (com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
+                        com.niki914.zafiro.chat.routing.DirectCommand.parse(query), tools) != null ||
+                        com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
+                            com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(query), tools) != null)
+                    if (!enabled) refresh() else local!!.snapshot
+                } ?: throw RuntimePreparationTimeout()
                 runtimeState
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) {
                     throw throwable
                 }
-                runtimeState ?: run {
+                (if (throwable is RuntimePreparationTimeout || runtimeState?.localOnly == true) null else runtimeState) ?: run {
                     // 原文透传不造文案：异常 message 多为内部码（ConfigRequired）或
                     // 英文原文，翻译归直接消费方（UI toAssistantErrorUi / Service map）
                     val code = throwable.toUserErrorCode()
@@ -429,6 +462,7 @@ object LLMController {
             )
 
             turnActive.value = true
+            com.niki914.zafiro.chat.agentic.accessibility.ScreenBrain.activeTurn = true
             val startedAtMs = System.currentTimeMillis()
             var streamErrorReported = false
             var streamTerminated = false
@@ -472,12 +506,41 @@ object LLMController {
                 } else {
                     query
                 }
+                val routeStarted = System.nanoTime()
+                val eligibleLocal = images.isEmpty() && files.isEmpty()
+                var localAction = if (eligibleLocal) {
+                    com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
+                        com.niki914.zafiro.chat.routing.DirectCommand.parse(query), state.snapshot.tools.builtinTools)
+                        ?: com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
+                            com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(query), state.snapshot.tools.builtinTools)
+                } else null
+                var routeName = if (localAction != null) "DETERMINISTIC" else "GEMINI"
+                if (eligibleLocal && localAction == null) {
+                    val suggestion = com.niki914.zafiro.chat.routing.LocalIntelligence.suggest(query)
+                    if (suggestion != null) {
+                        localAction = com.niki914.zafiro.chat.routing.DirectCommandExecutor.action(
+                            com.niki914.zafiro.chat.routing.DirectCommand.parse(suggestion), state.snapshot.tools.builtinTools)
+                            ?: com.niki914.zafiro.chat.routing.LocalMessageExecutor.action(
+                                com.niki914.zafiro.chat.routing.LocalMessagePlan.parse(suggestion), state.snapshot.tools.builtinTools)
+                        if (localAction != null) routeName = "LOCAL_MODEL"
+                    }
+                }
+                com.niki914.zafiro.chat.routing.LocalIntelligence.diagnostics.value =
+                    com.niki914.zafiro.chat.routing.RouteDiagnostics(routeName,
+                        (System.nanoTime() - routeStarted) / 1_000_000,
+                        if (localAction == null) "No confident supported local plan" else null)
                 // 终态以返回值承载（TurnResult）；onEvent 只承担流式中间过程。
                 val result = try {
                     state.okia.send(
                         text = effectiveQuery,
                         images = images,
-                        options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
+                        options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt,
+                            loopOptions = com.niki914.okia.loop.LoopOptions(maxModelRounds = when (com.niki914.zafiro.chat.routing.RequestRouting.budget.value) {
+                                com.niki914.zafiro.chat.routing.RequestBudget.Economy -> 12
+                                com.niki914.zafiro.chat.routing.RequestBudget.Balanced -> 16
+                                com.niki914.zafiro.chat.routing.RequestBudget.Quality -> 32
+                            }),
+                            localAction = localAction),
                     ) { event ->
                         val mapped = LlmStreamEventMapper.map(event, startedAtMs)
                         mapped?.let {
@@ -584,6 +647,7 @@ object LLMController {
             }
         } finally {
             turnActive.value = false
+            com.niki914.zafiro.chat.agentic.accessibility.ScreenBrain.activeTurn = false
             AccessibilityController.onTurnEnd()
         }
     }.flowOn(Dispatchers.IO)
@@ -673,16 +737,18 @@ object LLMController {
     ): Okia {
         val endpoint = config.endpoint.ifBlank { protocolDefaultEndpointFallback(protocol) }
         val wireProtocol = wireProtocolFor(protocol)
-        val saver = ensureImageSaver()
+        val saver = if (config.endpoint == "https://local.invalid") null else ensureImageSaver()
         return Okia.open(wireProtocol, restore) {
             this.endpoint = endpoint
             apiKey = config.apiKey
             model = config.model
             hooks += killToolResourcesHook
             hooks += fixIncompleteToolCallsHook
+            hooks += com.niki914.zafiro.chat.routing.RoutingRuntime
+            httpEngine = com.niki914.zafiro.chat.routing.RoutingRuntime
             // null = 不超时（General Settings 提供「不限时」选项）
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
-            retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
+            retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts, maxServerWaitMs = 10_000)
             // 单次输出上限：不设就用 okia 骨架的 4096，长回答/大工具参数会被切断
             maxTokens = config.maxTokens
             toolRegistry = this@LLMController.toolRegistry
@@ -961,8 +1027,11 @@ object LLMController {
         }
     }
 
+    private class RuntimePreparationTimeout : Exception("Runtime preparation timed out")
+
     private fun Throwable.toUserErrorCode(): LlmErrorCode? {
         return when (this) {
+            is RuntimePreparationTimeout -> LlmErrorCode.IdleTimeout
             is LlmConfigRequiredException -> LlmErrorCode.ConfigRequired
             // OKIA 并发契约违例（活跃回合中 send）转 TurnConflict，保持 UI 行为
             is IllegalStateException -> LlmErrorCode.TurnConflict
@@ -976,6 +1045,7 @@ object LLMController {
         val snapshot: LlmRuntimeSnapshot,
         val okia: Okia,
         val sessionProtocol: LlmProtocol?,
+        val localOnly: Boolean = false,
     )
 
     private class LlmConfigRequiredException : IllegalStateException("LLM config is required")

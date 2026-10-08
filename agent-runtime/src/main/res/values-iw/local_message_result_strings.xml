@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_message_uncertain">לא הצלחתי לוודא אם ההודעה נשלחה. בדוק את WhatsApp לפני ניסיון נוסף.</string>
+</resources>

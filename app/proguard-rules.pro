@@ -111,3 +111,6 @@
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
 }
+
+# LiteRT-LM JNI resolves Kotlin classes by name; weights remain optional private downloads.
+-keep class com.google.ai.edge.litertlm.** { *; }

@@ -42,8 +42,40 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import com.niki914.okia.error.LLMError
+import com.niki914.okia.error.LLMErrorCode
+import com.niki914.okia.protocol.RequestSnapshot
+import com.niki914.okia.tooling.ToolKind
 
 class LLMControllerOkiaTest {
+
+    // Offline commands must not prepare a provider/MCP/Skills; cloud cannot reuse an offline sentinel after config failure.
+    @Test fun localSessionWorksWithoutCloudConfigurationAndFailsClosedForCloud() = runTest {
+        val gateway = installRuntimeSettingsGatewayForTest(FakeRuntimeSettingsGateway(llmConfig = RuntimeLlmConfig()))
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, restore, config ->
+            assertEquals("https://local.invalid", config.endpoint)
+            openOkiaWithStubLoop(stubLoop(emptyList(), TurnResult.Completed(CompletionReason.Stop)), restore)
+        }
+        assertTrue(LLMController.ensureSession("פתח וואטסאפ").isNotBlank())
+        assertEquals(0, gateway.readLlmConfigCount)
+        assertEquals(0, gateway.listMcpServersCount)
+        assertEquals(0, gateway.listEnabledSkillsCallCount)
+        val errors = LLMController.stream("Explain quantum mechanics").toList().filterIsInstance<LlmStreamEvent.Error>()
+        assertEquals(LlmErrorCode.ConfigRequired, errors.single().code)
+    }
+
+    // Protects text chat from waiting forever when runtime/session preparation stalls.
+    @Test
+    fun stalledPreparationEmitsTimeoutInsteadOfRemainingBusy() = runTest {
+        installRuntimeSettingsGatewayForTest(FakeRuntimeSettingsGateway(llmConfig = validLlmConfig()))
+        LLMController.okiaFactory = LLMController.OkiaFactory { _, _, _ ->
+            CompletableDeferred<Okia>().await()
+        }
+        val events = LLMController.stream("hello").toList()
+        val errors = events.filterIsInstance<LlmStreamEvent.Error>()
+        assertEquals(1, errors.size)
+        assertEquals(LlmErrorCode.IdleTimeout, errors.single().code)
+    }
 
     @get:Rule
     val silentLogger = SilentLoggerRule()
@@ -170,7 +202,7 @@ class LLMControllerOkiaTest {
         assertNotNull(terminal)
         // 内置工具携带 inputSchemaJson（D25 描述合法性）；kind = Local
         assertNotNull(terminal!!.descriptor.inputSchemaJson)
-        assertEquals(com.niki914.okia.tooling.ToolKind.Local, terminal.descriptor.kind)
+        assertEquals(ToolKind.Local, terminal.descriptor.kind)
     }
 
     // ── stream：文本流与终态 ─────────────────────────────────────────────────
@@ -208,15 +240,15 @@ class LLMControllerOkiaTest {
                 TurnEvent.TurnStarted("q"),
                 TurnEvent.TurnFailed(
                     AssistantMessage(emptyList()),
-                    com.niki914.okia.error.LLMError(
-                        com.niki914.okia.error.LLMErrorCode.Transport,
+                    LLMError(
+                        LLMErrorCode.Transport,
                         "boom"
                     )
                 ),
             ),
             result = TurnResult.Failed(
-                com.niki914.okia.error.LLMError(
-                    com.niki914.okia.error.LLMErrorCode.Transport,
+                LLMError(
+                    LLMErrorCode.Transport,
                     "boom"
                 )
             ),
@@ -235,7 +267,7 @@ class LLMControllerOkiaTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(prompt = "Base"))
         )
-        val capturedSnapshots = mutableListOf<com.niki914.okia.protocol.RequestSnapshot>()
+        val capturedSnapshots = mutableListOf<RequestSnapshot>()
         val loop = object : AgentLoop {
             override suspend fun run(
                 request: LoopRequest,
@@ -262,7 +294,7 @@ class LLMControllerOkiaTest {
         installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(maxTokens = 64_000))
         )
-        val capturedSnapshots = mutableListOf<com.niki914.okia.protocol.RequestSnapshot>()
+        val capturedSnapshots = mutableListOf<RequestSnapshot>()
         val loop = object : AgentLoop {
             override suspend fun run(
                 request: LoopRequest,
@@ -286,7 +318,7 @@ class LLMControllerOkiaTest {
         val gateway = installRuntimeSettingsGatewayForTest(
             FakeRuntimeSettingsGateway(llmConfig = validLlmConfig(maxTokens = 64_000))
         )
-        val capturedSnapshots = mutableListOf<com.niki914.okia.protocol.RequestSnapshot>()
+        val capturedSnapshots = mutableListOf<RequestSnapshot>()
         val loop = object : AgentLoop {
             override suspend fun run(
                 request: LoopRequest,
@@ -548,7 +580,7 @@ class LLMControllerOkiaTest {
         override val compat = DeepSeekCompat()
 
         override suspend fun buildRequest(
-            snapshot: com.niki914.okia.protocol.RequestSnapshot,
+            snapshot: RequestSnapshot,
             history: List<Message>,
         ): HttpRequest = HttpRequest(
             url = snapshot.endpoint,

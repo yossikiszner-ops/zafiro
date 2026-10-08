@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_message_uncertain">I could not verify whether the message was submitted. Check WhatsApp before trying again.</string>
+</resources>

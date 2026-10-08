@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- App / Module -->
+
     <string name="app_name">Zafiro</string>
     <string name="xposed_desc">Empower your voice assistant with your own models\n\nCurrently supported:\n\n- ColorOS Breeno\n- HyperOS XiaoAi</string>
 
-    <!-- Onboarding -->
+
     <string name="ui_onboard_startup_demo_button">Get Started</string>
     <string name="ui_onboard_provider_pick_title">Choose a Provider</string>
     <string name="ui_onboard_provider_pick_description">Start here to connect your model.\nSelect a provider to continue.</string>
@@ -33,7 +33,7 @@
     <string name="ui_onboard_done_description">Setup is complete. You can start using Zafiro now or fine-tune it later in Settings.</string>
     <string name="ui_onboard_done_enter_home">Open Zafiro</string>
 
-    <!-- Home -->
+
     <string name="ui_home_title">Zafiro</string>
     <string name="ui_home_menu_new_conversation">New conversation</string>
     <string name="ui_home_input_placeholder">Type a message...</string>
@@ -104,17 +104,17 @@
     <string name="ui_conversation_history_delete_error">Failed to delete conversation: %1$s</string>
     <string name="ui_root_back_to_home_hint">Press back again to go to the Home screen</string>
 
-    <!-- Settings Shell -->
+
     <string name="ui_settings_title">Settings</string>
     <string name="ui_settings_menu_entry">Settings</string>
 
-    <!-- Settings Home Sections -->
+
     <string name="ui_settings_section_model">Model</string>
     <string name="ui_settings_section_tools">Tools</string>
     <string name="ui_settings_section_rules">Rules</string>
     <string name="ui_settings_section_app">App</string>
 
-    <!-- Settings Home Items -->
+
     <string name="ui_settings_model_config">Model Configuration</string>
     <string name="ui_settings_model_config_summary">Adjust how Zafiro connects to your model</string>
     <string name="ui_settings_memory">Memory</string>
@@ -149,7 +149,7 @@
     <string name="ui_settings_storage">Storage</string>
     <string name="ui_settings_storage_summary">Clear caches and downloaded files</string>
     <string name="ui_settings_about">About</string>
-    <string name="ui_settings_about_summary"></string>
+    <string name="ui_settings_about_summary" />
     <string name="ui_settings_about_description">Bring your own model to your voice assistant</string>
     <string name="ui_settings_about_author_homepage">Author Website</string>
     <string name="ui_settings_about_github">GitHub</string>
@@ -176,7 +176,7 @@
     <string name="ui_settings_storage_error_load_failed">Failed to measure storage: %1$s</string>
     <string name="ui_settings_storage_error_clear_failed">Failed to clear: %1$s</string>
 
-    <!-- Settings Detail Shared -->
+
     <string name="ui_todo_page_title">Coming Soon</string>
     <string name="ui_todo_page_description">This will be available in a future release. Stay tuned.</string>
     <string name="unsaved_changes_dialog_title">Unsaved Changes</string>
@@ -184,7 +184,7 @@
     <string name="unsaved_changes_dialog_confirm_exit">Exit</string>
     <string name="unsaved_changes_dialog_cancel">Cancel</string>
 
-    <!-- Settings Configure Page -->
+
     <string name="ui_settings_configure_description">Configure model access, prompts, and proxy settings.</string>
     <string name="ui_settings_configure_save">Save Configuration</string>
     <string name="ui_settings_configure_prompt_label">Prompt</string>
@@ -197,7 +197,7 @@
     <string name="ui_settings_configure_error_proxy_invalid">Proxy address is not a valid URI</string>
     <string name="ui_settings_mcp_config">MCP Configuration</string>
 
-    <!-- Memory Module -->
+
     <string name="memory_page_description">Manage saved memories. Swipe left or right to delete, or tap an item to edit it. Once added, the Agent will remember this information even in new conversations.</string>
     <string name="memory_page_empty_description">No memories have been saved yet. Tap the top right to add your first memory.</string>
     <string name="memory_loading">Loading memories...</string>
@@ -217,7 +217,7 @@
     <string name="memory_error_save_failed">Failed to save memory: %1$s</string>
     <string name="memory_error_delete_failed">Failed to delete memory: %1$s</string>
 
-    <!-- Execution Rules Module -->
+
     <string name="execution_rules_page_description">Configure rules for Shell and tool execution. This page currently provides only the UI shell and is not yet wired into the actual interception flow.</string>
     <string name="execution_rules_empty_action_hint">Tap the top right to add your first draft rule.</string>
     <string name="execution_rules_loading">Loading execution rules...</string>
@@ -248,7 +248,7 @@
     <string name="execution_rules_error_patterns_required">Enter at least one pattern</string>
     <string name="execution_rules_save_action">Save Rule</string>
 
-    <!-- Takeover Module -->
+
     <string name="takeover_default_responder">Default Responder</string>
     <string name="takeover_page_description">Check rules in order and choose who should respond.</string>
     <string name="takeover_empty_action_hint">Tap the top right to add your first takeover rule.</string>
@@ -276,7 +276,7 @@
     <string name="takeover_delete_dialog_text">Are you sure you want to delete the takeover rule \"%1$s\"? This action cannot be undone.</string>
     <string name="takeover_error_delete_failed">Failed to delete takeover rules: %1$s</string>
 
-    <!-- Builtin Tool Module -->
+
     <string name="builtin_tool_page_description">Turn preset built-in tools on or off. Changes take effect in the next conversation.</string>
     <string name="builtin_tool_loading">Loading built-in tool status...</string>
     <string name="builtin_tool_empty">No built-in tools are available right now.</string>
@@ -291,7 +291,7 @@
     <string name="builtin_tool_custom_py_tools_entry">Custom Python tools</string>
     <string name="builtin_tool_custom_py_tools_entry_summary">Parameterized custom Python tools the agent can create, modify, and test-run</string>
 
-    <!-- Python Tool Module -->
+
     <string name="custom_py_tool_page_title">Python Meta Tools</string>
     <string name="custom_py_tool_page_description">Manage your Custom Python tools.</string>
     <string name="custom_py_tool_page_empty_description">Let your Agent create one, or tap the top right to add a new tool.</string>
@@ -343,25 +343,25 @@
     <string name="update_dialog_confirm">Update</string>
     <string name="update_dialog_cancel">Later</string>
 
-    <!-- Notification strings -->
 
-    <!-- Fallback -->
 
-    <!-- Host App Display Names -->
+
+
+
     <string name="host_breeno_display_name">Breeno</string>
     <string name="host_xiaoai_display_name">XiaoAi</string>
 
-    <!-- Error: MCP -->
+
     <string name="error_mcp_load_failed">Failed to load MCP configuration</string>
     <string name="error_mcp_save_failed">Failed to save MCP configuration</string>
     <string name="error_mcp_delete_failed">Failed to delete MCP configuration</string>
 
-    <!-- Error: Execution Rules -->
+
     <string name="error_exec_rules_load_failed">Failed to load execution rules</string>
     <string name="error_exec_rules_save_failed">Failed to save execution rules</string>
     <string name="error_exec_rules_delete_failed">Failed to delete execution rules</string>
 
-    <!-- Error: Skill -->
+
     <string name="error_skill_load_failed">Failed to load skills</string>
     <string name="error_skill_save_failed">Failed to save skill</string>
     <string name="error_skill_read_failed">Failed to read skill</string>
@@ -376,13 +376,13 @@
     <string name="error_memory_save_failed">Failed to save memory</string>
     <string name="error_memory_delete_failed">Failed to delete memory</string>
 
-    <!-- Feedback templates -->
+
     <string name="feedback_feature_template">## Feature Suggestion\n\n## Use Case\n\n## Expected Result</string>
     <string name="feedback_bug_template">## Issue Description\n\n## Steps to Reproduce\n\n## Expected Behavior\n\n## Actual Behavior\n\n## Device Info\n- Android version:\n- Assistant (Breeno or other):\n- Module version:\n\n## More\nYou can attach logs, screenshots, or recordings to help us understand the issue.</string>
     <string name="conversation_fork_title">Fork · %1$s</string>
     <string name="conversation_regenerate_title">Regenerate · %1$s</string>
     <string name="conversation_rewind_title">Rewind · %1$s</string>
-    <!-- Tool display names -->
+
     <string name="ui_tool_display_terminal">Terminal</string>
     <string name="ui_tool_display_load_skill">Load Skill</string>
     <string name="ui_tool_display_execute_python">Python</string>
@@ -464,7 +464,7 @@
     <string name="ui_theme_color_amber">Amber</string>
     <string name="ui_theme_color_sunset">Sunset</string>
 
-    <!-- Resident Notification -->
+
     <string name="agent_resident_title_idle">Agent · Standby</string>
     <string name="agent_resident_title_failed">Agent · Failed</string>
     <string name="agent_resident_title_interrupted">Agent · Stopped</string>
@@ -476,4 +476,110 @@
     <string name="agent_resident_action_stop">Stop</string>
     <string name="agent_resident_action_approve">Allow</string>
     <string name="agent_resident_action_decline">Deny</string>
+    <string name="provider_quota_title">API quota unavailable</string>
+    <string name="provider_quota_body">Google rejected this request for the selected project and model. Verify that the active configuration uses the intended API key and project, and check its model quota in Google AI Studio.</string>
+    <string name="provider_auth_body">Check or replace the API key in AI provider settings.</string>
+    <string name="provider_rate_title">Too many requests</string>
+    <string name="app_update_title">Application updates</string>
+    <string name="app_update_check">Check for update</string>
+    <string name="app_update_download">Download update</string>
+    <string name="app_update_install">Install / allow installation</string>
+    <string name="app_update_hint">Updates come from the Zafiro repository. Android asks before installing.</string>
+    <string name="app_update_busy">Checking or downloading…</string>
+    <string name="app_update_failed">Unable to prepare the update. Check the network. The APK must match this application and its signing certificate.</string>
+    <string name="app_update_ready">Update verified. If Android requests permission, allow installation, return here and press Install again.</string>
+    <string name="app_update_available">An update is available for download.</string>
+    <string name="app_update_no_release">No newer downloadable release was found.</string>
+    <string name="voice_active_configuration">Active AI configuration: %1$s</string>
+    <string name="voice_test_audio">Test voice without microphone</string>
+    <string name="voice_stop_audio">Stop speech</string>
+    <string name="voice_test_sample">Hello. This is a Zafiro voice test.</string>
+<string name="ui_home_thinking_title">Thinking</string>
+    <string name="ui_conversation_history_title">History</string>
+    <string name="ui_conversation_selection_count">%1$d selected</string>
+    <string name="ui_conversation_history_pinned_section">Pinned</string>
+    <string name="ui_conversation_history_batch_delete_dialog_text">Delete %1$d selected conversations? This cannot be undone.</string>
+    <string name="ui_conversation_action_load">Load</string>
+    <string name="ui_conversation_action_fork">Fork from here</string>
+    <string name="ui_conversation_action_pin">Pin to top</string>
+    <string name="ui_conversation_action_unpin">Unpin</string>
+    <string name="ui_conversation_action_rename">Rename</string>
+    <string name="ui_conversation_action_delete">Delete</string>
+    <string name="ui_conversation_rename_dialog_title">Rename conversation</string>
+    <string name="ui_conversation_rename_dialog_hint">Conversation title</string>
+    <string name="ui_conversation_rename_dialog_confirm">Save</string>
+    <string name="ui_conversation_rename_dialog_cancel">Cancel</string>
+    <string name="ui_time_just_now">Just now</string>
+    <string name="ui_time_minutes_ago">%1$dm ago</string>
+    <string name="ui_time_hours_ago">%1$dh ago</string>
+    <string name="ui_time_yesterday">Yesterday</string>
+    <string name="ui_settings_section_ability">Ability</string>
+    <string name="ui_settings_tools">Tools</string>
+    <string name="ui_settings_tools_summary">Manage available tools</string>
+    <string name="tool_page_description">Turn tools on or off. Changes take effect in the next conversation.</string>
+    <string name="tool_loading">Loading tool status...</string>
+    <string name="tool_empty">No tools are available right now.</string>
+    <string name="tool_load_failed">Failed to load: %1$s</string>
+    <string name="tool_save_failed">Failed to save: %1$s</string>
+    <string name="tool_group_dev_tools">Dev Tools</string>
+    <string name="tool_group_dev_tools_summary">Execute shell commands and Python code on your device</string>
+    <string name="tool_group_android_native">Android Native</string>
+    <string name="tool_group_android_native_summary">System-native actions: open links, search and launch apps, send notifications</string>
+    <string name="tool_group_screen_operation">Screen Operation</string>
+    <string name="tool_group_screen_operation_summary">Read and operate the screen via accessibility service or shell</string>
+    <string name="tool_custom_py_tools_entry">Custom Python tools</string>
+    <string name="tool_custom_py_tools_entry_summary">Parameterized custom Python tools the agent can create, modify, and test-run</string>
+
+
+    <string name="custom_py_tool_save_dialog_checking_title">Checking Tool Code</string>
+    <string name="custom_py_tool_save_dialog_checking_text">The check extracts the main() parameter signature and may take a few seconds.\n\nYou can cancel; nothing is saved if you do.</string>
+    <string name="custom_py_tool_save_dialog_success_title">Tool Saved</string>
+    <string name="custom_py_tool_save_dialog_success_text">Saved to the custom Python tool list.\n\nThe agent can now call it when needed.</string>
+    <string name="custom_py_tool_save_dialog_code_failed_title">Code Check Failed</string>
+    <string name="custom_py_tool_save_dialog_code_failed_text">The error comes from the tool code itself.\n\nFix the code and save again.</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_title">Save Failed</string>
+    <string name="custom_py_tool_save_dialog_internal_failed_text">The error comes from inside the app, not from the tool code.\n\nPlease retry, and report this message if it keeps happening.</string>
+    <string name="custom_py_tool_save_dialog_action_cancel">Cancel</string>
+    <string name="custom_py_tool_save_dialog_action_done">Done</string>
+    <string name="custom_py_tool_save_dialog_action_close">Close</string>
+    <string name="ui_onboard_done_advanced_entry">Permissions &amp; execution rules</string>
+    <string name="ui_onboard_preferences_title">Permissions &amp; execution rules</string>
+    <string name="ui_onboard_preferences_permissions_group">Permissions</string>
+    <string name="ui_onboard_preferences_phone_use_title">Phone Use</string>
+    <string name="ui_onboard_preferences_phone_use_desc">Let the Agent control your phone; requires accessibility and overlay permissions</string>
+    <string name="ui_onboard_preferences_floating_ball_title">Floating Ball</string>
+    <string name="ui_onboard_preferences_floating_ball_desc">Show the floating ball in background to follow agent status</string>
+    <string name="ui_onboard_preferences_notification_title">Resident Notification</string>
+    <string name="ui_onboard_preferences_notification_desc">Show live agent status in the notification drawer</string>
+    <string name="ui_onboard_preferences_file_title">File access</string>
+    <string name="ui_onboard_preferences_file_desc">Allow the Agent to read and write files outside the sandbox</string>
+    <string name="ui_onboard_preferences_granted">Granted</string>
+    <string name="ui_onboard_preferences_grant_action">Tap to grant</string>
+    <string name="ui_onboard_preferences_security_group">Execution rules</string>
+    <string name="ui_onboard_preferences_security_hint">Commands that need confirmation before running</string>
+    <string name="ui_onboard_preferences_rule_add_action">Add rule</string>
+    <string name="ui_onboard_preferences_rule_add_title">Add execution rule</string>
+    <string name="ui_onboard_preferences_rule_add_hint">Accepts a keyword or regex, one line only</string>
+    <string name="ui_onboard_preferences_rule_placeholder">Enter a keyword or regex</string>
+    <string name="ui_onboard_preferences_rule_add_confirm">Add</string>
+    <string name="ui_onboard_preferences_rule_delete">Delete %1$s</string>
+    <string name="ui_onboard_preferences_action_grant_all">Grant all</string>
+    <string name="ui_onboard_preferences_action_skip">Skip</string>
+    <string name="ui_onboard_preferences_toast_denied">Permission not granted</string>
+    <string name="cursor_style_optical">Optical focus</string>
+    <string name="cursor_style_arrow">Modern mouse pointer</string>
+    <string name="cursor_style_halo">Double halo</string>
+    <string name="cursor_style_crosshair">Crosshair</string>
+    <string name="cursor_style_diamond">Prism diamond</string>
+    <string name="cursor_style_aperture">Aperture</string>
+    <string name="cursor_style_comet">Comet</string>
+    <string name="cursor_style_orbit">Orbit</string>
+    <string name="cursor_style_brackets">Focus brackets</string>
+    <string name="cursor_style_dot">Minimal dot</string>
+    <string name="voice_wake_enable">Enable Jarvis on-device wake session</string>
+    <string name="voice_wake_scope">Requires Android on-device English recognition. Stops after 30 minutes; no cloud wake detection. Hold the microphone to open voice settings.</string>
+    <string name="voice_background_active">Voice session active. Tap Stop to release the microphone.</string>
+    <string name="voice_background_stop">Stop background listening</string>
+    <string name="app_update_import">Choose a downloaded APK update</string>
+    <string name="voice_action_checking">Checking the next action.</string>
 </resources>

@@ -60,6 +60,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.niki914.uikit.base.BaseTheme
 import com.niki914.uikit.infra.shape.G2CardShape
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassAppearance
+import com.niki914.zafiro.remoteview.glass.ZafiroGlassPresets
+import com.niki914.zafiro.remoteview.glass.zafiroGlassMaterial
 import com.niki914.zafiro.api.model.ApprovalRequest
 
 /**
@@ -73,6 +76,8 @@ import com.niki914.zafiro.api.model.ApprovalRequest
 @Composable
 fun FloatingBallMorphCard(
     state: FloatingBallState,
+    appearance: ZafiroGlassAppearance = ZafiroGlassPresets.Signature,
+    reducedMotion: Boolean = false,
     dockSide: DockSide,
     modifier: Modifier = Modifier,
     preview: String? = null,
@@ -93,14 +98,21 @@ fun FloatingBallMorphCard(
     // TODO: 卡片背景色按末轮结局变色（primaryContainer 默认 / errorContainer 失败 /
     //   tertiaryContainer 打断，禁用 hardcode 以兼容动态取色）：见 OverlayManager collect 处主 TODO。
     val cardBg = colors.primaryContainer
-    val cardContentColor = colors.onPrimaryContainer
-    val buttonBg = colors.onPrimaryContainer
-    val buttonIconTint = colors.primaryContainer
+    val cardContentColor = Color(0xFFF2F6FA)
+    val buttonBg = Color(0xFFE4EDF4)
+    val buttonIconTint = Color(0xFF17212B)
 
     // 动画进度：0f 为收起态（小球尺寸），1f 为完全展开态（卡片尺寸）
     val animProgress = remember { Animatable(if (state.isExpanded) 1f else 0f) }
 
-    LaunchedEffect(state) {
+    LaunchedEffect(state, reducedMotion) {
+        if (reducedMotion) {
+            val wasOpen = animProgress.value > 0f
+            animProgress.snapTo(if (state.isExpanded) 1f else 0f)
+            onBallAlphaChanged(if (state.isExpanded) 0f else 1f)
+            if (!state.isExpanded && wasOpen) onCollapseFinished()
+            return@LaunchedEffect
+        }
         if (state.isExpanded) {
             animProgress.animateTo(
                 targetValue = 1f,
@@ -127,8 +139,6 @@ fun FloatingBallMorphCard(
                     animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
                 )
                 onCollapseFinished()
-            } else {
-                onBallAlphaChanged(1f)
             }
         }
     }
@@ -172,7 +182,8 @@ fun FloatingBallMorphCard(
                 .offset { IntOffset(containerLeft.roundToPx(), containerTop.roundToPx()) }
                 .size(width = currentWidth, height = currentHeight)
                 .clip(cardShape)
-                .background(cardBg, cardShape)
+                .zafiroGlassMaterial(appearance, FloatingBallTokens.cardCornerRadiusDp * appearance.curvature.coerceIn(0f, 1f))
+                .graphicsLayer { alpha = 1f - appearance.transparency * .18f }
                 .clickable(enabled = progress < 0.2f, onClick = onBallClick)
                 .padding(currentCardPadding),
             horizontalAlignment = Alignment.CenterHorizontally,

@@ -2,7 +2,7 @@
 // 依赖保持最小，骨架编译快、JVM 可测。
 plugins {
     id("com.android.library")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
 }
 
 android {

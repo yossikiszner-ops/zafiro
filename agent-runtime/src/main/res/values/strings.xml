@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="error_config_required">请先填写配置</string>
+    <string name="error_config_required">Please configure your model first</string>
+    <string name="local_opening_app">Opening WhatsApp</string>
+    <string name="local_finding_contact">Finding contact</string>
+    <string name="local_opening_conversation">Opening conversation</string>
+    <string name="local_writing_message">Writing message</string>
+    <string name="local_send_message">Send message</string>
+    <string name="local_send_confirmation">Your approval is required before sending</string>
+    <string name="local_message_submitted">The composer cleared after sending. Delivery could not be verified.</string>
+    <string name="local_message_cancelled">Sending cancelled. The draft may remain in WhatsApp.</string>
+    <string name="local_message_stopped">I could not verify the next step. I stopped; check WhatsApp before retrying.</string>
 </resources>

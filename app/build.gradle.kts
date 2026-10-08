@@ -2,8 +2,8 @@ import java.util.Properties
 
 plugins {
     id("com.android.application") version "9.1.1"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.2.0"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.0"
     id("com.google.devtools.ksp")
 }
 
@@ -14,6 +14,9 @@ ksp {
 android {
     namespace = "com.niki914.zafiro.app"
     compileSdk = 37
+    externalNativeBuild {
+        cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" }
+    }
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -23,8 +26,8 @@ android {
         applicationId = "com.niki914.zafiro"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.5.0"
-        versionCode = 11
+        versionName = "1.6.0-zafiro.4"
+        versionCode = 17
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -77,6 +80,9 @@ android {
 }
 
 dependencies {
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("com.github.gkonovalov.android-vad:webrtc:2.0.10")
     implementation(project(":agent-runtime"))
     implementation(project(":business:permission"))
     implementation(project(":business:files"))

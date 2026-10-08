@@ -12,7 +12,9 @@ data class RetryPolicy(
     val maxAttempts: Int = 3,
     val baseDelayMs: Long = 500,
     val maxDelayMs: Long = 60_000,
-    val jitterRatio: Float = 0.1f
+    val jitterRatio: Float = 0.1f,
+    /** Reject long server cooldowns instead of keeping an interactive request pending. */
+    val maxServerWaitMs: Long = Long.MAX_VALUE
 ) {
 
     // 第 attempt 次重试（1 起）的退避延迟。指数上溢防护：2^n 封顶 2^30。

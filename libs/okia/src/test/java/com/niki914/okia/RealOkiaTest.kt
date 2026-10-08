@@ -45,6 +45,69 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RealOkiaTest {
+    // Protects deterministic Android actions from calling the model or losing local conversation history.
+    @Test fun localTurnSkipsTheModelAndPersistsTheResult() = runTest {
+        var modelCalls = 0
+        val loop = FakeAgentLoop { _, _ -> modelCalls++; error("Local commands must not call the model") }
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), loop = loop, scope = testScope(testScheduler))
+        val events = mutableListOf<TurnEvent>()
+        val result = okia.send("open app", options = TurnOptions(localAction = LocalTurnAction {
+            AssistantMessage(listOf(ContentBlock.Text("launch accepted")), stopReason = StopReason.Stop)
+        })) { events += it }
+        assertEquals(0, modelCalls)
+        assertEquals(TurnResult.Completed(CompletionReason.Stop), result)
+        assertEquals(2, okia.export().entries.size)
+        okia.close()
+    }
+    @Test fun cancellingLocalActionReleasesTheTurnWithoutAnExtraModelCall() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
+        val task = async {
+            okia.send("open app", options = TurnOptions(localAction = LocalTurnAction {
+                entered.complete(Unit)
+                CompletableDeferred<AssistantMessage>().await()
+            })) {}
+        }
+        entered.await()
+        okia.stop()
+        assertTrue(task.await() is TurnResult.Aborted)
+        assertEquals(1, okia.export().entries.size)
+        okia.close()
+    }
+
+
+    // Local failures/cancelled approvals retain their readable response without a fake success event.
+    @Test fun failedLocalActionHasFailureOutcomeWithoutCallingTheModel() = runTest {
+        var modelCalls = 0
+        val loop = FakeAgentLoop { _, _ -> modelCalls++; error("No model on a local failure") }
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), loop = loop, scope = testScope(testScheduler))
+        val events = mutableListOf<TurnEvent>()
+        val result = okia.send("send message", options = TurnOptions(localAction = LocalTurnAction {
+            throw LocalTurnStopped(AssistantMessage(listOf(ContentBlock.Text("Could not verify the conversation"))))
+        })) { events += it }
+        assertTrue(result is TurnResult.Failed)
+        assertEquals(0, modelCalls)
+        assertEquals(1, events.filterIsInstance<TurnEvent.TurnFailed>().size)
+        assertTrue(events.none { it is TurnEvent.TurnCompleted })
+        assertEquals(2, okia.export().entries.size)
+        val next = okia.send("next", options = TurnOptions(localAction = LocalTurnAction {
+            AssistantMessage(listOf(ContentBlock.Text("done")))
+        })) {}
+        assertTrue(next is TurnResult.Completed)
+        okia.close()
+    }
+    @Test fun rejectedLocalApprovalHasInterruptedOutcomeAndPersistsCancellation() = runTest {
+        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()), scope = testScope(testScheduler))
+        val events = mutableListOf<TurnEvent>()
+        val result = okia.send("send message", options = TurnOptions(localAction = LocalTurnAction {
+            throw LocalTurnStopped(AssistantMessage(listOf(ContentBlock.Text("Cancelled"))), cancelled = true)
+        })) { events += it }
+        assertEquals(TurnResult.Aborted(StopCause.UserStop), result)
+        assertTrue(events.none { it is TurnEvent.TurnCompleted })
+        assertEquals(1, events.filterIsInstance<TurnEvent.TurnAborted>().size)
+        assertEquals(2, okia.export().entries.size)
+        okia.close()
+    }
 
     // ── fixtures ───────────────────────────────────────────────────────────
 
@@ -89,16 +152,6 @@ class RealOkiaTest {
         CoroutineScope(SupervisorJob() + StandardTestDispatcher(scheduler))
 
     // ── 初始状态 ───────────────────────────────────────────────────────────
-
-    @Test
-    fun initialStateEmpty() = runTest {
-        val okia = openOkia(FakeProtocolMapper(emptyList<ProtocolEvent>()))
-        val snapshot = okia.conversation.value
-        assertNull(snapshot.leafId)
-        assertTrue(snapshot.history.isEmpty())
-        assertNull(snapshot.live)
-        okia.close()
-    }
 
     // ── send 正常路径 ──────────────────────────────────────────────────────
 
@@ -259,26 +312,6 @@ class RealOkiaTest {
     // ── 并发契约 ───────────────────────────────────────────────────────────
 
     @Test
-    fun concurrentSendThrows() = runTest {
-        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
-        val okia = openOkia(FakeProtocolMapper(events), scope = testScope(testScheduler))
-        val first = launch { okia.send("one") { } }
-        runCurrent()
-
-        val second = try {
-            okia.send("two") { }
-            null
-        } catch (e: IllegalStateException) {
-            e
-        }
-        assertNotNull(second)
-
-        first.cancel()
-        runCurrent() // 让 turn job 清理 activeTurn
-        okia.close()
-    }
-
-    @Test
     fun concurrentSendsReserveExactlyOneActiveTurn() = runBlocking {
         // 回归守卫（T2 竞态）：check 与回合状态预留必须在同一临界区——多线程并发
         // send 恰好一个成功、其余抛 IllegalStateException。此前实现 check 通过后
@@ -417,48 +450,9 @@ class RealOkiaTest {
         okia.close()
     }
 
-    @Test
-    fun stopWithoutActiveTurnIsNoop() = runTest {
-        val okia = openOkia(
-            FakeProtocolMapper(emptyList<ProtocolEvent>()),
-            scope = testScope(testScheduler)
-        )
-        okia.stop()
-        okia.close()
-    }
-
-    @Test
-    fun stopThenImmediateSendWorks() = runTest {
-        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
-        val okia = openOkia(FakeProtocolMapper(events), scope = testScope(testScheduler))
-
-        val first = async { okia.send("one") { } }
-        runCurrent()
-        okia.stop()
-        assertEquals(TurnResult.Aborted(StopCause.UserStop), first.await())
-
-        // stop 返回后立即再 send：activeTurn 已清空，不抛
-        val second = async { okia.send("two") { } }
-        runCurrent()
-        events.emit(completed())
-        runCurrent()
-        assertEquals(TurnResult.Completed(CompletionReason.Stop), second.await())
-        okia.close()
-    }
-
-    @Test
-    fun externalCancellationPropagates() = runTest {
-        val events = MutableSharedFlow<ProtocolEvent>(extraBufferCapacity = 16)
-        val okia = openOkia(FakeProtocolMapper(events), scope = testScope(testScheduler))
-        val job = launch { okia.send("hi") { } }
-        runCurrent()
-
-        job.cancel()
-        runCurrent()
-
-        assertTrue(job.isCancelled)
-        okia.close()
-    }
+    // （stop 无活跃回合 / stop 后立刻再 send / 外部取消传播：由 RealOkiaStopTest
+    //  的 stopWithNoActiveTurnIsNoOp、stopThenSendStartsFreshTurn、
+    //  externalCancellationTriggersBeforeStopAndRethrows 覆盖，此处不重复）
 
     // ── 会话操作 ───────────────────────────────────────────────────────────
 

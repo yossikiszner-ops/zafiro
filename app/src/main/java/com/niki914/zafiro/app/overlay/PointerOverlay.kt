@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.PixelFormat
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -23,7 +22,7 @@ class PointerOverlay : IPointerOverlay {
 
     companion object {
         private const val FADE_DURATION_MS = 300L
-        private const val POINTER_SIZE_DP = 80
+        private const val POINTER_SIZE_DP = 48
     }
 
     // Android overlay infrastructure.
@@ -31,6 +30,8 @@ class PointerOverlay : IPointerOverlay {
     // entire lifetime — we toggle visibility via alpha only. This avoids
     // addView/removeView races where a re-attached view briefly renders at
     // default alpha=1 before we can set it to 0.
+    private val focusDrawable = OpticalFocusDrawable()
+    private var feedbackAnim: ValueAnimator? = null
     private var wm: WindowManager? = null
     private var view: ImageView? = null
     private var lp: WindowManager.LayoutParams? = null
@@ -56,6 +57,8 @@ class PointerOverlay : IPointerOverlay {
     // ============================================================
 
     fun init(ctx: Context) {
+        AgentCursorPreferences.load(ctx)
+        focusDrawable.cursorStyle = AgentCursorPreferences.appearance.value.style
         val dm = ctx.resources.displayMetrics
         density = dm.density
         screenW = dm.widthPixels
@@ -65,26 +68,24 @@ class PointerOverlay : IPointerOverlay {
         wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         view = ImageView(ctx).apply {
-            setImageResource(R.drawable.cursor)
+            setImageDrawable(focusDrawable)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
         lp = WindowManager.LayoutParams(
             sizePx, sizePx,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
+            gravity = Gravity.TOP or Gravity.LEFT
         }
 
         view?.alpha = 0f
 
-        tryAttach()
+        if (AgentCursorPreferences.appearance.value.enabled) tryAttach()
     }
 
     // ============================================================
@@ -93,6 +94,7 @@ class PointerOverlay : IPointerOverlay {
 
     override fun show(x: Float, y: Float) {
         handler.post {
+            if (!AgentCursorPreferences.appearance.value.enabled) return@post
             view?.animate()?.cancel()
             tryAttach()
             curX = x
@@ -100,7 +102,38 @@ class PointerOverlay : IPointerOverlay {
             curHeading = PointerCurveMath.IDLE_HEADING_RAD
             prevAngleDeg = Math.toDegrees(curHeading.toDouble()).toFloat()
             applyTransform(x, y, curHeading)
-            view?.animate()?.alpha(1f)?.setDuration(FADE_DURATION_MS)?.start()
+            view?.animate()?.alpha(AgentCursorPreferences.appearance.value.intensity)?.setDuration(FADE_DURATION_MS)?.start()
+        }
+    }
+
+    fun refreshAppearance() {
+        handler.post {
+            val config = AgentCursorPreferences.appearance.value
+            focusDrawable.cursorStyle = config.style
+            if (!config.enabled) { cancelAnim(); feedbackAnim?.cancel(); view?.animate()?.cancel(); view?.alpha = 0f }
+            else if ((view?.alpha ?: 0f) > 0f) view?.alpha = config.intensity
+        }
+    }
+
+    override suspend fun animateTypingTo(x: Float, y: Float) {
+        if (!AgentCursorPreferences.appearance.value.enabled) return
+        val trajectory = PointerCurveMath.buildTrajectory(curX, curY, curHeading, x, y, MovementMode.FLY, screenW, screenH)
+        animateAlongRaw(trajectory, (120 / AgentCursorPreferences.appearance.value.speed).toLong().coerceAtLeast(40))
+    }
+
+    override fun actionAccepted() {
+        handler.post {
+            val config = AgentCursorPreferences.appearance.value
+            if (!config.enabled || !config.tapFeedback) return@post
+            feedbackAnim?.cancel()
+            feedbackAnim = ValueAnimator.ofFloat(.01f, 1f).apply {
+                duration = 240
+                addUpdateListener { focusDrawable.feedback = it.animatedValue as Float }
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) { focusDrawable.feedback = 0f }
+                })
+                start()
+            }
         }
     }
 
@@ -108,6 +141,7 @@ class PointerOverlay : IPointerOverlay {
         handler.post {
             view?.animate()?.cancel()
             cancelAnim()
+            feedbackAnim?.cancel()
             view?.animate()?.alpha(0f)?.setDuration(FADE_DURATION_MS)?.start()
         }
     }
@@ -116,6 +150,7 @@ class PointerOverlay : IPointerOverlay {
         handler.post {
             view?.animate()?.cancel()
             cancelAnim()
+            feedbackAnim?.cancel()
             if (attached) {
                 try {
                     wm?.removeViewImmediate(view)
@@ -129,7 +164,7 @@ class PointerOverlay : IPointerOverlay {
     override suspend fun animateTo(
         x: Float, y: Float, mode: MovementMode,
     ) {
-        if (!attached) return
+        if (!attached || !AgentCursorPreferences.appearance.value.enabled) return
         cancelAnim()
         val t = PointerCurveMath.buildTrajectory(
             curX, curY, curHeading, x, y, mode, screenW, screenH,
@@ -140,17 +175,8 @@ class PointerOverlay : IPointerOverlay {
     override suspend fun showSwipe(
         sx: Float, sy: Float, ex: Float, ey: Float, duration: Long,
     ) {
-        if (!attached) return
+        if (!attached || !AgentCursorPreferences.appearance.value.enabled) return
         cancelAnim()
-
-        // Phase 1: fly to swipe start (organic curve, tangent-following)
-        val fly = PointerCurveMath.buildTrajectory(
-            curX, curY, curHeading, sx, sy, MovementMode.FLY, screenW, screenH,
-        )
-        animateAlong(fly)
-
-        // Brief pause so the pointer "lands" before the stroke
-        delayOnMain(PointerCurveMath.SWIPE_GAP_MS)
 
         // Phase 2: translate along swipe path (straight line, NW heading)
         val swipe = PointerCurveMath.buildTrajectory(
@@ -168,7 +194,7 @@ class PointerOverlay : IPointerOverlay {
     private suspend fun animateAlong(
         trajectory: PointerCurveMath.Trajectory,
     ) {
-        animateAlongRaw(trajectory, trajectory.totalDurationMs)
+        animateAlongRaw(trajectory, (trajectory.totalDurationMs / AgentCursorPreferences.appearance.value.speed).toLong().coerceAtLeast(1))
     }
 
     /**
@@ -282,10 +308,7 @@ class PointerOverlay : IPointerOverlay {
         val half = (POINTER_SIZE_DP * density / 2f).toInt()
         p.x = x.toInt() - half
         p.y = y.toInt() - half
-        // Drawable tip naturally points top-left; subtract IDLE_HEADING_RAD to
-        // convert absolute screen heading to a rotation relative to default.
-        view?.rotation =
-            Math.toDegrees((headingRad - PointerCurveMath.IDLE_HEADING_RAD).toDouble()).toFloat()
+        view?.rotation = 0f
         try {
             if (attached) wm?.updateViewLayout(view, p)
         } catch (_: Exception) {

@@ -66,6 +66,7 @@ internal object PermissionSpec {
                 )
             }
 
+        Permission.MICROPHONE -> GrantMechanism.Runtime(listOf(Manifest.permission.RECORD_AUDIO))
         Permission.OVERLAY -> GrantMechanism.AppOp(OP_SYSTEM_ALERT_WINDOW)
         Permission.ACCESSIBILITY -> GrantMechanism.Accessibility
         Permission.ROOT, Permission.SHIZUKU -> null

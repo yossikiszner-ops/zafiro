@@ -32,6 +32,23 @@ import org.junit.Test
  * commit 内容 / TurnResult 终态 / executor 调用记录），不依赖实现内部结构。
  */
 class RealAgentLoopToolLoopTest {
+    // Protects Android workflows from endlessly repeating tool/model rounds after a stalled target.
+    @Test fun repeatedToolWorkflowStopsAtTheBudgetWithPairedResults() = runTest {
+        val executor = RecordingToolExecutor()
+        val registry = DefaultToolRegistry().apply { register(localTool("tool"), executor) }
+        val commits = mutableListOf<Message>()
+        val emitted = mutableListOf<TurnEvent>()
+        val request = loopRequest(listOf(
+            ProtocolEvent.ToolCallStarted("call", "tool"),
+            ProtocolEvent.ToolCallReady("call", "tool", "{}"),
+            ProtocolEvent.Completed(stopReason = StopReason.ToolUse),
+        ), registry) { commits += it }.copy(options = LoopOptions(maxModelRounds = 2))
+        val result = runLoop(request, emitted)
+        assertTrue(result is TurnResult.Failed)
+        assertEquals(2, commits.filterIsInstance<Message.ToolResult>().size)
+        assertEquals(1, emitted.filterIsInstance<TurnEvent.TurnFailed>().size)
+    }
+
 
     // ── fixtures ───────────────────────────────────────────────────────────
 

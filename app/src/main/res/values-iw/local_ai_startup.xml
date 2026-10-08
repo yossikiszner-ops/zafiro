@@ -1,0 +1,23 @@
+<resources>
+    <string name="local_ai_startup_title">הגדרת בינה מקומית</string>
+    <string name="local_ai_startup_found">נמצאו מודלים מקומיים תואמים. בחר מודל ובדוק אותו במכשיר לפני הפעלה.</string>
+    <string name="local_ai_startup_missing">לא נמצא מודל תואם ומאומת. אפשר להוריד מודל או לייבא קובץ שכבר נמצא בטלפון.</string>
+    <string name="local_ai_choose_model">בחירת מודל</string>
+    <string name="local_ai_install_model">התקנה או ייבוא</string>
+    <string name="local_ai_later">מאוחר יותר</string>
+    <string name="local_ai_discovery_scope">בודק את אחסון Zafiro והקבצים החיצוניים שלו. למודל בהורדות או בתיקייה אחרת השתמש בייבוא. מודלים פרטיים של אפליקציות אחרות אינם נגישים. מופעלים רק מודלי LiteRT תואמים שעברו אימות.</string>
+    <string name="local_ai_import">ייבוא מודל מהטלפון</string>
+    <string name="local_ai_importing">מעתיק ומאמת מודל…</string>
+    <string name="local_ai_imported">המודל יובא ואומת. בחר ובדוק כדי להפעיל.</string>
+    <string name="local_ai_import_unsupported">הייבוא נכשל: הקובץ אינו מודל נתמך או שלא ניתן לקרוא אותו. קובצי GGUF דורשים מנוע הרצה אחר.</string>
+    <string name="local_ai_not_selected">לא נבחר מודל שעבר בדיקה</string>
+    <string name="local_ai_loading">טוען מודל מקומי…</string>
+    <string name="local_ai_ready">המודל המקומי נטען ועבר את בדיקת הפקודות</string>
+    <string name="local_ai_idle">נבחר מודל מאומת; ייטען מחדש כשיידרש</string>
+    <string name="local_ai_low_memory">אין מספיק זיכרון פנוי לטעינת המודל. סגור אפליקציות אחרות או בחר מודל קטן יותר.</string>
+    <string name="local_ai_accuracy_failed">המודל רץ אך לא עבר את בדיקת הפקודות; הוא לא הופעל לביצוע פעולות Android.</string>
+    <string name="local_ai_runtime_failed">טעינת המודל או הרצתו נכשלה במכשיר. נסה להתקין מחדש או לבחור במודל הקטן.</string>
+    <string name="local_ai_selected_model">נבחר: %1$s</string>
+    <string name="local_ai_select_and_test">בחירה ובדיקה במכשיר</string>
+    <string name="local_ai_discovery_failed">לא ניתן לבדוק את האחסון המקומי. עדיין אפשר לייבא או להוריד מודל.</string>
+</resources>

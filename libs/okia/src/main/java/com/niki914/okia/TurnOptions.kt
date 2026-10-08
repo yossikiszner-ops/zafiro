@@ -11,5 +11,18 @@ data class TurnOptions(
     val model: String? = null,
     val temperature: Float? = null,
     val maxTokens: Int? = null,
-    val loopOptions: LoopOptions? = null
+    val loopOptions: LoopOptions? = null,
+    /** Deterministic host actions use the same cancellable turn and persisted conversation. */
+    val localAction: LocalTurnAction? = null
 )
+
+fun interface LocalTurnAction {
+    suspend fun run(onEvent: suspend (com.niki914.okia.event.TurnEvent) -> Unit): com.niki914.okia.message.AssistantMessage
+}
+
+
+/** Host terminal status with its readable response; failure/cancellation must not look like success. */
+class LocalTurnStopped(
+    val response: com.niki914.okia.message.AssistantMessage,
+    val cancelled: Boolean = false,
+) : Exception()

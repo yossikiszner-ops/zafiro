@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="glass_state_dormant">זפירו</string>
+    <string name="glass_state_wake">מוכן</string>
+    <string name="glass_state_listening">מקשיב…</string>
+    <string name="glass_state_understanding">מבין…</string>
+    <string name="glass_state_searching">מחפש…</string>
+    <string name="glass_state_reading">קורא…</string>
+    <string name="glass_state_thinking">חושב…</string>
+    <string name="glass_state_tool">פועל…</string>
+    <string name="glass_state_writing">כותב…</string>
+    <string name="glass_state_confirm">נדרש אישור</string>
+    <string name="glass_state_sending">שולח…</string>
+    <string name="glass_state_speaking">מדבר…</string>
+    <string name="glass_state_success">בוצע</string>
+    <string name="glass_state_permission">ממתין להרשאה…</string>
+    <string name="glass_state_recover">מתאושש…</string>
+    <string name="glass_state_error">אירעה שגיאה</string>
+    <string name="glass_state_interrupted">נקטע</string>
+</resources>
