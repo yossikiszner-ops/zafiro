@@ -1,0 +1,56 @@
+name: Original Zafiro Hebrew
+on:
+  push:
+    branches: ["localization/upstream-1.8.1-hebrew"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: original-hebrew-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run original unit tests
+        run: ./gradlew testDebugUnitTest :agent-runtime:testPythonRuntime --stacktrace
+      - name: Build original release app with Hebrew resources
+        run: |
+          cat > "$RUNNER_TEMP/hebrew-signing.gradle" <<'GRADLE'
+          allprojects {
+              afterEvaluate { project ->
+                  if (project.plugins.hasPlugin('com.android.application')) {
+                      def android = project.extensions.getByName('android')
+                      android.buildTypes.getByName('release').signingConfig = android.signingConfigs.getByName('debug')
+                  }
+              }
+          }
+          GRADLE
+          ./gradlew :app:assembleRelease --stacktrace --init-script "$RUNNER_TEMP/hebrew-signing.gradle"
+      - name: Upload Hebrew APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zafiro-original-1.8.1-Hebrew-${{ github.sha }}
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hebrew-test-reports-${{ github.sha }}
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
